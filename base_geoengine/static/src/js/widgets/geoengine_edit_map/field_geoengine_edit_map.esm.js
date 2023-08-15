@@ -5,6 +5,7 @@
  */
 
 import {loadBundle} from "@web/core/assets";
+import { session } from "@web/session";
 import {registry} from "@web/core/registry";
 import {useService} from "@web/core/utils/hooks";
 import {standardFieldProps} from "@web/views/fields/standard_field_props";
@@ -40,6 +41,7 @@ export class FieldGeoEngineEditMap extends Component {
             this.defaultZoom = result.default_zoom;
             this.restrictedExtent = result.restricted_extent;
             this.srid = result.srid;
+            this.mapBoxToken = session.map_box_token || "",
             this.createLayers();
             this.renderMap();
             this.setValue(this.props.value);
@@ -95,6 +97,31 @@ export class FieldGeoEngineEditMap extends Component {
      */
     createLayers() {
         this.vectorLayer = this.createVectorLayer();
+        this.osmLayer = new ol.layer.Tile({
+            source: new ol.source.OSM(),
+        });
+        this.layer_list = [this.osmLayer]
+        if (!!this.mapBoxToken) {
+            this.satelliteLayer = new ol.layer.Tile({
+                source: new ol.source.XYZ({
+                    url: 'https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}?access_token=' + this.mapBoxToken
+                }),
+            });
+            this.streetLayer = new ol.layer.Tile({
+                source: new ol.source.XYZ({
+                    url: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}?access_token=' + this.mapBoxToken
+                }),
+                visible: false,
+            });
+            this.outdoorsLayer = new ol.layer.Tile({
+                source: new ol.source.XYZ({
+                    url: 'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/256/{z}/{x}/{y}?access_token=' + this.mapBoxToken
+                }),
+                visible: false,
+            });
+            this.osmLayer.setVisible(false);
+            this.layer_list = [this.satelliteLayer, this.streetLayer, this.outdoorsLayer, this.osmLayer]
+        }
     }
 
     /**
@@ -213,6 +240,14 @@ export class FieldGeoEngineEditMap extends Component {
         this.clearmapControl = new ol.control.Control({element: element});
 
         this.map.addControl(this.clearmapControl);
+
+        if (!!this.mapBoxToken) {
+            const elementLayers = this.createLayerControl();
+
+            this.layersControl = new ol.control.Control({element: elementLayers});
+
+            this.map.addControl(this.layersControl);
+        }
     }
 
     /**
@@ -233,16 +268,58 @@ export class FieldGeoEngineEditMap extends Component {
     }
 
     /**
+     * Create the buttons that change the map layers.
+     * @returns the div in which the buttons are located.
+     */
+    createLayerControl() {
+        const buttonSatellite = document.createElement("button");
+        buttonSatellite.innerHTML = 'Satellite';
+        buttonSatellite.addEventListener("click", () => {
+            this.satelliteLayer.setVisible(true)
+            this.streetLayer.setVisible(false)
+            this.outdoorsLayer.setVisible(false)
+            this.osmLayer.setVisible(false)
+        });
+        const buttonStreet = document.createElement("button");
+        buttonStreet.innerHTML = 'Street';
+        buttonStreet.addEventListener("click", () => {
+            this.satelliteLayer.setVisible(false)
+            this.streetLayer.setVisible(true)
+            this.outdoorsLayer.setVisible(false)
+            this.osmLayer.setVisible(false)
+        });
+        const buttonOutdoors = document.createElement("button");
+        buttonOutdoors.innerHTML = 'Outdoors';
+        buttonOutdoors.addEventListener("click", () => {
+            this.satelliteLayer.setVisible(false)
+            this.streetLayer.setVisible(false)
+            this.outdoorsLayer.setVisible(true)
+            this.osmLayer.setVisible(false)
+        });
+        const buttonOSM = document.createElement("button");
+        buttonOSM.innerHTML = 'OSM';
+        buttonOSM.addEventListener("click", () => {
+            this.satelliteLayer.setVisible(false)
+            this.streetLayer.setVisible(false)
+            this.outdoorsLayer.setVisible(false)
+            this.osmLayer.setVisible(true)
+        });
+        const elementLayers = document.createElement("div");
+        elementLayers.className = "ol-control ol-style-layer";
+        elementLayers.appendChild(buttonSatellite);
+        elementLayers.appendChild(buttonStreet);
+        elementLayers.appendChild(buttonOutdoors);
+        elementLayers.appendChild(buttonOSM);
+        return elementLayers;
+    }
+
+    /**
      * Displays the map in the div provided.
      */
     renderMap() {
         this.map = new ol.Map({
             target: this.id,
-            layers: [
-                new ol.layer.Tile({
-                    source: new ol.source.OSM(),
-                }),
-            ],
+            layers: this.layer_list,
             view: new ol.View({
                 center: [0, 0],
                 zoom: 5,
