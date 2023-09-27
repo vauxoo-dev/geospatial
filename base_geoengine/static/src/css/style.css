@@ -155,7 +155,7 @@
 }
 
 .select-control {
-    top: 8em;
+    top: 6em;
     left: 0.5em;
 }
 
@@ -385,12 +385,17 @@
 }
 
 .ol-clear {
-    top: 65px;
+    top: 80px;
     left: 0.5em;
 }
 
 .ol-style-layer {
-    top: 100px;
+    top: 9em;
+    left: 0.5em;
+}
+
+.ol-action-mode-draw {
+    top: 6.5em;
     left: 0.5em;
 }
 
