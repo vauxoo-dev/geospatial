@@ -38,6 +38,7 @@ export class LayersPanel extends Component {
                 const element = this.props.vectorModel.records.find(
                     (el) => el.resId === val.id
                 );
+
                 const obj = {id: element.id, resId: element.resId};
                 Object.assign(val, obj);
             });

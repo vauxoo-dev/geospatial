@@ -266,7 +266,6 @@ export class GeoengineRenderer extends Component {
         if (this.props.editable && this.isGeoengineAdmin) {
             this.createDrawControl();
             this.createSelectControl();
-            this.createEditControl();
         }
         const scaleLine = new ol.control.ScaleLine();
         this.map.addControl(scaleLine);

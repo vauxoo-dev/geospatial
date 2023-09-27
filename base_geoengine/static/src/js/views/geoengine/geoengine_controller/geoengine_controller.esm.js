@@ -74,7 +74,7 @@ export class GeoengineController extends Component {
         const {views} = await this.view.loadViews({resModel, views: [[false, "form"]]});
         const context = {};
         context[`default_${field}`] = value;
-
+        debugger
         this.addDialog(FormViewDialog, {
             resModel: resModel,
             title: this.env._t("New record"),
