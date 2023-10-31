@@ -113,6 +113,11 @@ $ol-tooltip-bg-color: rgba(0, 0, 0, 0.5);
     }
 }
 
+.ol-clear {
+    top: 140px;
+    left: 0.5em;
+}
+
 .ol-polygon-type-control {
     max-width: 8.8rem;
     background-color: white;
@@ -128,4 +133,20 @@ $ol-tooltip-bg-color: rgba(0, 0, 0, 0.5);
         max-width: 13rem;
         font-size: 1.5rem;
     }
+}
+
+.ol-geopoints-control {
+    top: 120px;
+    left: 0.5em;
+}
+
+.ol-home-control {
+    top: 100px;
+    left: 0.5em;
+
+}
+
+.ol-remove-interaction-control {
+    top: 160px;
+    left: 0.5em;
 }
