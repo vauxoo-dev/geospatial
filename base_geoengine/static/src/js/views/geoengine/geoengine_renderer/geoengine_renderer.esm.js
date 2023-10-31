@@ -610,6 +610,10 @@ export class GeoengineRenderer extends Component {
         this.hidePopup();
     }
 
+    test() {
+        console.log("test");
+    }
+
     hidePopup() {
         this.overlay.setPosition(undefined);
     }

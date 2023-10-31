@@ -55,10 +55,6 @@ export  const LAND_TYPES = [
         name: "Other",
         color: "#FF0075"
     },
-    {
-        name: "None",
-        color: "#D0D4CA"
-    }
 ];
 export const VIEW_TYPE_GEOENGINE = 'geoengine';
 
