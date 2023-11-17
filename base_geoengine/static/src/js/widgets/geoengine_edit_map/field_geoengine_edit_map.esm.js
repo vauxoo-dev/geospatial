@@ -71,7 +71,7 @@ export class FieldGeoEngineEditMap extends Component {
             this.geoIp = await this.getGeoIp();
             this.setValue(this.props.value);
             this.geoPoints = this.props.record.data.geopoint_ids?.records ?? []
-            if(this.geoPoints.length > 0) this.createCoordsTooltip()
+            if(this.geoPoints?.length > 0) this.createCoordsTooltip()
             this.deleteMode = false;
         });
 
@@ -105,7 +105,7 @@ export class FieldGeoEngineEditMap extends Component {
      * of [longitude, latitude] values.
      */
     async getGeoIp() {
-        return new Promise((resolve, _) => {
+        return new Promise((resolve) => {
             navigator.geolocation.getCurrentPosition(
                 position => {
                     const { longitude, latitude } = position.coords;
@@ -288,7 +288,7 @@ export class FieldGeoEngineEditMap extends Component {
                 this.updateMapZoom();
                 this.createValuesTooltip();
                 if (this.props.record.data.city_id)  await this.generateChildFeatures()
-                if (this.geoPoints.length > 0) this.generateGeoPoints();
+                if (this.geoPoints?.length > 0) this.generateGeoPoints();
             } else {
                 this.updateMapEmpty();
             }
@@ -369,9 +369,10 @@ export class FieldGeoEngineEditMap extends Component {
                 this.createTooltipInfo();
                 this.sketch = e.feature;
                 this.tooltipCoord = e.coordinate;
-                this.infoTooltipElement.textContent = "Click to continue drawing the Property Boundary"
                 this.listener = this.sketch.getGeometry().on("change", e => {
                     const geom = e.target;
+                    const length = ol.sphere.getLength(geom) / 1000;
+                    this.infoTooltipElement.textContent = `${length.toFixed(2)} km`;
                     this.tooltipCoord = geom.getInteriorPoint().getCoordinates();
                     this.infoTooltipOverlay.setPosition(this.tooltipCoord);
                 })
@@ -396,6 +397,11 @@ export class FieldGeoEngineEditMap extends Component {
             this.polygonTypeControl = new ol.control.Control({element: polygonTypeControl});
             this.map.addControl(this.polygonTypeControl);
         }
+
+        const fsElement = this.createFullscreenControl();
+        this.fullscreenControl = new ol.control.Control({element: fsElement});
+        this.map.addControl(this.fullscreenControl);
+
         const homeElement = this.createHomeControl();
         this.homeControl = new ol.control.Control({element: homeElement});
         this.map.addControl(this.homeControl);
@@ -421,13 +427,32 @@ export class FieldGeoEngineEditMap extends Component {
         }
     }
 
+    createFullscreenControl(){
+        const button = document.createElement("button");
+        button.innerHTML = '<i class="fa fa-expand"/>';
+        button.addEventListener("click", () => {
+            const mapContainer = this.map.getTargetElement();
+            if (mapContainer.requestFullscreen) {
+                mapContainer.requestFullscreen();
+            } else if (mapContainer.webkitRequestFullscreen) {
+                mapContainer.webkitRequestFullscreen();
+            } else if (mapContainer.msRequestFullscreen) {
+                mapContainer.msRequestFullscreen();
+            }
+        });
+        const element = document.createElement("div");
+        element.className = "ol-control ol-fs-control ol-unselectable";
+        element.appendChild(button);
+        return element;
+    }
+
     createHomeControl() {
         const button = document.createElement("button");
         button.innerHTML = '<i class="fa fa-home"/>';
         button.addEventListener("click", () => {
             this.map.getView().animate({
                 center: this.mainLandCenter,
-                zoom: 20,
+                zoom: 16,
             });
         });
         const element = document.createElement("div");
@@ -466,7 +491,6 @@ export class FieldGeoEngineEditMap extends Component {
         element.appendChild(button);
         return element;
     }
-
 
     createGeoPointStyle(label=null) {
         const vectorSource = new ol.source.Vector({});
@@ -539,6 +563,7 @@ export class FieldGeoEngineEditMap extends Component {
                         latitude,
                         land_id: this.props.record.data.id
                     }, vectorLayer)
+                    if(!record) return;
                     const { id, name } = record.data
                     e.feature.set("id", id)
                     e.feature.set("coordinates", [longitude, latitude])
@@ -706,7 +731,6 @@ export class FieldGeoEngineEditMap extends Component {
         element.appendChild(button);
         return element;
     }
-    
 
     createPolygonTypeControl() {
         this.selectPolygonElement = document.createElement("select");
@@ -769,9 +793,10 @@ export class FieldGeoEngineEditMap extends Component {
             this.createTooltipInfo();
             this.sketch = e.feature;
             this.tooltipCoord = e.coordinate;
-            this.infoTooltipElement.textContent = `Click to continue drawing the ${polygonType} land`
             this.listener = this.sketch.getGeometry().on("change", e => {
                 const geom = e.target;
+                const length = ol.sphere.getLength(geom) / 1000;
+                this.infoTooltipElement.textContent = `${length.toFixed(2)} km`;
                 this.tooltipCoord = geom.getInteriorPoint().getCoordinates();
                 this.infoTooltipOverlay.setPosition(this.tooltipCoord);
             })
@@ -789,10 +814,12 @@ export class FieldGeoEngineEditMap extends Component {
                     the_geom: this.format.writeGeometry(feature.getGeometry()),
                     city_id: this.props.record.data.city_id[0]
                 }, feature, this.source)
-                const { id, name } = record.data
-                feature.set("name", `${polygonType || ''} \n ${name || ''}`);
-                feature.set("landName", name)
-                feature.set("id", id)
+                if(record) {
+                    const { id, name } = record.data
+                    feature.set("name", `${polygonType || ''} \n ${name || ''}`);
+                    feature.set("landName", name)
+                    feature.set("id", id)
+                } 
             } catch(traceback) {
                 this.addDialog( ErrorDialog, { traceback });
             } finally {
@@ -1003,15 +1030,12 @@ export class FieldGeoEngineEditMap extends Component {
             Object.entries(values).map(([field, value]) => [`default_${field}`, value])
         );
         let record = null;
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.addDialog(FormViewDialog, {
                 resModel,
                 title: this.env._t("New record"),
                 viewId: views.form.id,
-                context : {
-                    ...context,
-                    comes_from_js: true
-                },
+                context,
                 onRecordSaved: r => {
                     record = r
                     resolve(r);  
@@ -1020,7 +1044,7 @@ export class FieldGeoEngineEditMap extends Component {
             { onClose: () => {
                 if (!record) {
                     source.removeFeature(feature);
-                    reject(); 
+                    resolve(); 
                 }
             }});
         });
@@ -1036,7 +1060,7 @@ export class FieldGeoEngineEditMap extends Component {
             Object.entries(values).map(([field, value]) => [`default_${field}`, value])
         );
         let record = null;
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.addDialog(FormViewDialog, {
                 resModel,
                 title: this.env._t("New record"),
@@ -1050,7 +1074,7 @@ export class FieldGeoEngineEditMap extends Component {
             { onClose: () => {
                 if (!record) {
                     this.map.removeLayer(vectorLayer);
-                    reject(); 
+                    resolve(); 
                 }
             }});
         });
