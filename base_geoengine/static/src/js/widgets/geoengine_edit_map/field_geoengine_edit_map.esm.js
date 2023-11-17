@@ -369,9 +369,11 @@ export class FieldGeoEngineEditMap extends Component {
                 this.createTooltipInfo();
                 this.sketch = e.feature;
                 this.tooltipCoord = e.coordinate;
-                this.infoTooltipElement.textContent = "Click to continue drawing the Property Boundary"
                 this.listener = this.sketch.getGeometry().on("change", e => {
+                    // Calculate the length of the line in kilometers
                     const geom = e.target;
+                    const length = ol.sphere.getLength(geom) / 1000;
+                    this.infoTooltipElement.textContent = `${length.toFixed(2)} km`;
                     this.tooltipCoord = geom.getInteriorPoint().getCoordinates();
                     this.infoTooltipOverlay.setPosition(this.tooltipCoord);
                 })
@@ -539,6 +541,7 @@ export class FieldGeoEngineEditMap extends Component {
                         latitude,
                         land_id: this.props.record.data.id
                     }, vectorLayer)
+                    if(!record) return;
                     const { id, name } = record.data
                     e.feature.set("id", id)
                     e.feature.set("coordinates", [longitude, latitude])
@@ -769,9 +772,10 @@ export class FieldGeoEngineEditMap extends Component {
             this.createTooltipInfo();
             this.sketch = e.feature;
             this.tooltipCoord = e.coordinate;
-            this.infoTooltipElement.textContent = `Click to continue drawing the ${polygonType} land`
             this.listener = this.sketch.getGeometry().on("change", e => {
                 const geom = e.target;
+                const length = ol.sphere.getLength(geom) / 1000;
+                this.infoTooltipElement.textContent = `${length.toFixed(2)} km`;
                 this.tooltipCoord = geom.getInteriorPoint().getCoordinates();
                 this.infoTooltipOverlay.setPosition(this.tooltipCoord);
             })
@@ -789,6 +793,7 @@ export class FieldGeoEngineEditMap extends Component {
                     the_geom: this.format.writeGeometry(feature.getGeometry()),
                     city_id: this.props.record.data.city_id[0]
                 }, feature, this.source)
+                if(!record) return;
                 const { id, name } = record.data
                 feature.set("name", `${polygonType || ''} \n ${name || ''}`);
                 feature.set("landName", name)
@@ -1003,7 +1008,7 @@ export class FieldGeoEngineEditMap extends Component {
             Object.entries(values).map(([field, value]) => [`default_${field}`, value])
         );
         let record = null;
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.addDialog(FormViewDialog, {
                 resModel,
                 title: this.env._t("New record"),
@@ -1014,13 +1019,13 @@ export class FieldGeoEngineEditMap extends Component {
                 },
                 onRecordSaved: r => {
                     record = r
-                    resolve(r);  
+                    resolve(record);  
                 }
             },
             { onClose: () => {
                 if (!record) {
                     source.removeFeature(feature);
-                    reject(); 
+                    resolve(); 
                 }
             }});
         });
@@ -1036,7 +1041,7 @@ export class FieldGeoEngineEditMap extends Component {
             Object.entries(values).map(([field, value]) => [`default_${field}`, value])
         );
         let record = null;
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.addDialog(FormViewDialog, {
                 resModel,
                 title: this.env._t("New record"),
@@ -1044,13 +1049,13 @@ export class FieldGeoEngineEditMap extends Component {
                 context ,
                 onRecordSaved: r => {
                     record = r
-                    resolve(r);  
-                }
+                    resolve(record);  
+                },
             },
             { onClose: () => {
                 if (!record) {
                     this.map.removeLayer(vectorLayer);
-                    reject(); 
+                    resolve(); 
                 }
             }});
         });
