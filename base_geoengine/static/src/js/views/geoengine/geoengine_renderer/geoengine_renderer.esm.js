@@ -339,8 +339,19 @@ export class GeoengineRenderer extends Component {
                     source: new ol.source.Vector(),
                 });
                 this.map.addInteraction(this.drawInteraction);
-                this.drawInteraction.on("drawstart", () => {
+                
+                this.drawInteraction.on("drawstart", e => {
                     this.props.onDrawStart();
+                    this.createTooltipInfo();
+                    this.sketch = e.feature;
+                    this.tooltipCoord = e.coordinate;
+                    this.listener = this.sketch.getGeometry().on("change", e => {
+                        const geom = e.target;
+                        const length = ol.sphere.getLength(geom) / 1000;
+                        this.infoTooltipElement.textContent = `${length.toFixed(2)} km`;
+                        this.tooltipCoord = geom.getInteriorPoint().getCoordinates();
+                        this.infoTooltipOverlay.setPosition(this.tooltipCoord);
+                    })
                 });
 
                 this.drawInteraction.on("drawend", (ev) => {
@@ -349,6 +360,8 @@ export class GeoengineRenderer extends Component {
                         key,
                         new ol.format.GeoJSON().writeGeometry(ev.feature.getGeometry())
                     );
+                    this.resetInfoTooltip();
+                    ol.Observable.unByKey(this.listener);
                 });
             }
         });
@@ -370,6 +383,7 @@ export class GeoengineRenderer extends Component {
             this.addSelectedClassToButton(button);
             this.removeDrawInteraction();
             this.removeModifyInteraction();
+            this.resetInfoTooltip();
             if (this.props.data.editedRecord !== null) {
                 this.props.onClickDiscard();
             }
@@ -426,6 +440,26 @@ export class GeoengineRenderer extends Component {
         element.className = className;
         element.appendChild(button);
         return {element, button};
+    }
+
+    createTooltipInfo() {
+        this.infoTooltipElement = document.createElement('div');
+        this.infoTooltipElement.className = 'ol-tooltip ol-tooltip-measure';
+        this.infoTooltipOverlay = new ol.Overlay({
+            element: this.infoTooltipElement,
+            offset: [15, 0],
+            positioning: 'bottom-center',
+            stopEvent: false,
+            insertFirst: false,
+        });
+        this.map.addOverlay(this.infoTooltipOverlay);
+    }
+
+    resetInfoTooltip() {
+        // unset sketch
+        this.sketch = null;
+        this.infoTooltipElement = null;
+        this.map.removeOverlay(this.infoTooltipOverlay);
     }
 
     /**
@@ -608,10 +642,6 @@ export class GeoengineRenderer extends Component {
      */
     clickToHidePopup() {
         this.hidePopup();
-    }
-
-    test() {
-        console.log("test");
     }
 
     hidePopup() {

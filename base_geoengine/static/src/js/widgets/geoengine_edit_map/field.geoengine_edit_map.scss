@@ -113,11 +113,6 @@ $ol-tooltip-bg-color: rgba(0, 0, 0, 0.5);
     }
 }
 
-.ol-clear {
-    top: 140px;
-    left: 0.5em;
-}
-
 .ol-polygon-type-control {
     max-width: 8.8rem;
     background-color: white;
@@ -135,23 +130,34 @@ $ol-tooltip-bg-color: rgba(0, 0, 0, 0.5);
     }
 }
 
-.ol-geopoints-control {
-    top: 120px;
+@mixin control-position($top, $top-md) {
+    top: $top;
     left: 0.5em;
+    @include media-breakpoint-up(md) {
+        top: $top-md;
+    }
 }
 
 .ol-home-control {
-    top: 100px;
-    left: 0.5em;
+    @include control-position(100px, 100px);
+}
 
+.ol-geopoints-control {
+    @include control-position(130px, 120px);
+}
+
+.ol-clear {
+    @include control-position(160px, 140px);
+}
+
+.ol-edit-land-control {
+    @include control-position(190px, 160px);
 }
 
 .ol-fs-control {
-    top: 160px;
-    left: 0.5em;
+    @include control-position(230px, 180px);
 }
 
 .ol-remove-interaction-control {
-    top: 180px;
-    left: 0.5em;
+    @include control-position(240px, 200px);
 }
