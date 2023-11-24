@@ -57,4 +57,8 @@ export  const LAND_TYPES = [
     },
 ];
 export const VIEW_TYPE_GEOENGINE = 'geoengine';
+export const FEATURE_TYPES = {
+    GEOPOINT: 'geopoint',
+    CHILD: 'child',
+}
 
