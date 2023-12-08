@@ -81,7 +81,7 @@ export class FieldGeoEngineEditMap extends Component {
         useEffect(
             () => {
                 if(this.valuesTooltipElement) this.addValuesTooltipContent();
-                if(!this.props.readonly && this.map && this.props.record.data.city_id) this.setupControls()
+                if(!this.props.readonly && this.map && this.props.record.data?.id) this.setupControls()
             },
             () => [this.props.record.data]
         )
@@ -234,7 +234,7 @@ export class FieldGeoEngineEditMap extends Component {
                 })
                 this.layer_list.push(layer)
             })
-            const defaultLayer = this.layer_list.find(layer =>layer.getProperties().layerName === activeLayer)
+            const defaultLayer = this.layer_list.find(layer => layer.getProperties().layerName === activeLayer)
             defaultLayer.setVisible(true)
         }
     }
@@ -415,8 +415,6 @@ export class FieldGeoEngineEditMap extends Component {
             });
 
         } else {
-            if(this.isGeoengineView) return;
-
             const editLandControl = this.createEditLandControl()
             this.editLandControl = new ol.control.Control({element: editLandControl});
             this.map.addControl(this.editLandControl);
@@ -649,13 +647,15 @@ export class FieldGeoEngineEditMap extends Component {
             }
             drawInteraction.on("drawend", async e => {
                 this.resetActiveInteraction()
-                const [longitude, latitude] = e.feature.getGeometry().getCoordinates()
+                const feature = e.feature
+                const [longitude, latitude] = feature.getGeometry().getCoordinates()
                 try {
                     const removeLayer = () => this.map.removeLayer(vectorLayer);
                     const record = await this.createRecord({
                         longitude,
                         latitude,
-                        land_id: this.props.record.data.id
+                        land_id: this.props.record.data.id,
+                        geopoint: this.format.writeGeometry(feature.getGeometry()),
                     }, "project.agriculture.scout", removeLayer)
                     if(!record) return;
                     const { id, name } = record.data

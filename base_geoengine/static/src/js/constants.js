@@ -61,4 +61,11 @@ export const FEATURE_TYPES = {
     GEOPOINT: 'geopoint',
     CHILD: 'child',
 }
-
+export const DEFAULT_BEGIN_COLOR = "#FFFFFF";
+export const DEFAULT_END_COLOR = "#000000";
+export const DEFAULT_MIN_SIZE = 5;
+export const DEFAULT_MAX_SIZE = 15;
+export const DEFAULT_NUM_CLASSES = 5;
+export const LEGEND_MAX_ITEMS = 10;
+export const PROJECT_AGRICULTURE_SCOUT_MODEL = "project.agriculture.scout";
+export const PROJECT_AGRICULTURE_LAND_MODEL = "project.agriculture.land";

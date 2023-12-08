@@ -27,7 +27,7 @@
                         </span>
                     </header>
                     <SearchBarRecords onInputKeyup.bind="onInputKeyup" />
-                    <ul class="raster list-group d-block o_search_panel_field">
+                    <ul class="raster list-group d-block o_search_panel_field" t-if="state.records.length > 0">
                         <li
                             class="mb-1 record d-flex justify-content-between"
                             t-foreach="state.records"
@@ -64,6 +64,9 @@
                             </t>
                         </li>
                     </ul>
+                    <p class="mt-2 fw-bold text-danger px-2" t-else="">
+                        No records found
+                    </p>
                 </section>
             </div>
             <div t-else="" class="d-flex justify-content-center text-900">
