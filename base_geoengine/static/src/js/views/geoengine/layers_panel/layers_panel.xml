@@ -41,10 +41,10 @@
                                         value="vector.isVisible"
                                         t-on-change="() => this.onVectorChange(vector, 'onVisibleChanged', !vector.isVisible)"
                                     >
-                                        <t t-esc="vector.name" />
+                                        <span t-esc="vector.name" class="text-break"/>
                                     </CheckBox>
                                     <button
-                                        t-if="vector.model_id !== false"
+                                        t-if="vector.model_id &amp; isGeoengineAdmin"
                                         class="btn btn-edit"
                                         t-on-click.prevent="() => this.onEditFilterButtonSelected(vector)"
                                     >

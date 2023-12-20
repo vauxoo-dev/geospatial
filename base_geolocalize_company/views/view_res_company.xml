@@ -28,7 +28,7 @@ License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
                                     /></span>
                                     <br />
                                     <span
-                                    attrs="{'invisible': [('date_localization', '=', False)]}"
+                                    invisible="not date_localization"
                                 >Updated on:
                                         <field
                                         name="date_localization"
@@ -39,7 +39,7 @@ License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
                                         <br />
                                     </span>
                                     <button
-                                    attrs="{'invisible': ['|', ('partner_latitude', '!=', 0), ('partner_longitude', '!=', 0)]}"
+                                    invisible="partner_latitude or partner_longitude"
                                     icon="fa-gear"
                                     string="Compute based on address"
                                     title="Compute Localization"
@@ -48,7 +48,7 @@ License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
                                     class="btn btn-link p-0"
                                 />
                                     <button
-                                    attrs="{'invisible': [('partner_latitude', '=', 0), ('partner_longitude', '=', 0)]}"
+                                    invisible="partner_latitude and partner_longitude"
                                     icon="fa-refresh"
                                     string="Refresh"
                                     title="Refresh Localization"

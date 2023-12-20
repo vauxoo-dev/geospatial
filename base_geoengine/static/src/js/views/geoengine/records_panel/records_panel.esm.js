@@ -3,8 +3,8 @@
 /**
  * Copyright 2023 ACSONE SA/NV
  */
-import {useService} from "@web/core/utils/hooks";
-import {SearchBarRecords} from "./search_bar_records/search_bar_records.esm";
+import { useService } from "@web/core/utils/hooks";
+import { SearchBarRecords } from "./search_bar_records/search_bar_records.esm";
 
 import {
     Component,
@@ -15,6 +15,15 @@ import {
 } from "@odoo/owl";
 
 export class RecordsPanel extends Component {
+    static props = {
+        list: Object,
+        onDisplayPopupRecord: Function,
+        zoomOnFeature: Function,
+        zoomOutOnFeature: {
+            type: Function,
+            optional: true,
+        }
+    };
     setup() {
         this.state = useState({
             isFolded: false,
@@ -48,7 +57,7 @@ export class RecordsPanel extends Component {
      */
     onDisplayPopupRecord(record) {
         const rec = this.props.list.records.find(
-            (val) => val._values.id === record.resId
+            (r) => r.resId === record.resId
         );
         this.state.isClicked = record.resId;
         this.props.onDisplayPopupRecord(rec);
@@ -78,4 +87,4 @@ export class RecordsPanel extends Component {
 }
 
 RecordsPanel.template = "base_geoengine.RecordsPanel";
-RecordsPanel.components = {SearchBarRecords};
+RecordsPanel.components = { SearchBarRecords };
