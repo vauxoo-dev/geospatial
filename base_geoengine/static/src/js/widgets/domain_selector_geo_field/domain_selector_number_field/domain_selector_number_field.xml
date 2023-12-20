@@ -3,7 +3,7 @@
 
     <t t-name="base_geoengine.DomainSelectorNumberFieldExtend" owl="1">
         <t t-if="props.operator.category === 'in'">
-            <DomainSelectorFieldInputWithTags t-props="props" />
+            <!-- <DomainSelectorFieldInputWithTags t-props="props" /> -->
         </t>
          <t t-elif="props.operator.category === 'active_ids'">
             <DomainSelectorFieldInputForActiveIds
@@ -13,7 +13,7 @@
         </t>
         <t t-else="">
             <div class="o_ds_value_cell">
-                <DomainSelectorFieldInput t-props="props" />
+                <!-- <DomainSelectorFieldInput t-props="props" /> -->
             </div>
         </t>
     </t>

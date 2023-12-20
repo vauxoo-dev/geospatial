@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <templates>
     <t t-name="base_geoengine.RecordsPanel" owl="1">
         <div
@@ -27,9 +27,9 @@
                         </span>
                     </header>
                     <SearchBarRecords onInputKeyup.bind="onInputKeyup" />
-                    <ul class="raster list-group d-block o_search_panel_field">
+                    <ul class="raster list-group d-block o_search_panel_field mt-2">
                         <li
-                            class="mb-1 record d-flex justify-content-between"
+                            class="mb-1 record d-flex justify-content-between border"
                             t-foreach="state.records"
                             t-as="record"
                             t-key="record.resId"

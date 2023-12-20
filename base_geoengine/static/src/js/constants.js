@@ -18,7 +18,7 @@ export const CUSTOM_LAYERS = [
     }
 ]
 export const FEATURE_OPACITY = 0.2;
-export  const LAND_TYPES = [
+export const LAND_TYPES = [
     {
         name: "Field",
         color: "#952323"
@@ -61,4 +61,9 @@ export const FEATURE_TYPES = {
     GEOPOINT: 'geopoint',
     CHILD: 'child',
 }
-
+export const DEFAULT_BEGIN_COLOR = "#FFFFFF";
+export const DEFAULT_END_COLOR = "#000000";
+export const DEFAULT_MIN_SIZE = 5;
+export const DEFAULT_MAX_SIZE = 15;
+export const DEFAULT_NUM_CLASSES = 5;
+export const LEGEND_MAX_ITEMS = 10;

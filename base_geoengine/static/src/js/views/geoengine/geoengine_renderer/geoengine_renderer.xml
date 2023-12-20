@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <templates xml:space="preserve">
     <t t-name="base_geoengine.GeoengineRenderer" owl="1">
         <div class="d-flex view w-100">
@@ -13,20 +13,11 @@
                 zoomOutOnFeature.bind="getOriginalZoom"
             />
         </div>
-        <div id="popup" class="ol-popup">
-            <div
-                id="popup-closer"
-                class="ol-popup-closer text-primary"
-                t-on-click="clickToHidePopup"
-            />
-            <div id="popup-content" />
-            <div class="row d-flex justify-content-center">
-                <button
-                    t-on-click="onInfoBoxClicked"
-                    class="btn btn-secondary border w-50"
-                >OPEN</button>
-            </div>
-        </div>
-        <div id="map-legend" class="ol-control" />
+        <GeoenginePopUp 
+            record="state.popUpRecord" 
+            clickToHidePopup.bind="clickToHidePopup"
+            onInfoBoxClicked.bind="onInfoBoxClicked"
+        />
+        <div id="map-legend" class=" ol-control" />
     </t>
 </templates>

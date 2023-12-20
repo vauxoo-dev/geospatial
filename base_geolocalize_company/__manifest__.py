@@ -5,7 +5,7 @@
     "name": "Base Geolocalize Company",
     "summary": """
         Add latitude and longitude fields on company model""",
-    "version": "16.0.1.0.1",
+    "version": "17.0.1.0.1",
     "license": "AGPL-3",
     "author": "GRAP, Odoo Community Association (OCA)",
     "maintainers": ["legalsylvain"],
