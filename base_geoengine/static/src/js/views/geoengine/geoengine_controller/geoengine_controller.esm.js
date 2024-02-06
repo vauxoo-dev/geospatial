@@ -13,6 +13,8 @@ import { WarningDialog } from "@web/core/errors/error_dialogs";
 import { Component, useState } from "@odoo/owl";
 import { addFieldDependencies, extractFieldsFromArchInfo } from "@web/model/relational_model/utils";
 import { _t } from "@web/core/l10n/translation";
+import { SearchBar } from "@web/search/search_bar/search_bar";
+
 
 export class GeoengineController extends Component {
     /**
@@ -173,7 +175,7 @@ export class GeoengineController extends Component {
 }
 
 GeoengineController.template = "base_geoengine.GeoengineController";
-GeoengineController.components = { Layout };
+GeoengineController.components = { Layout, SearchBar };
 GeoengineController.props = {
     archInfo: Object,
     fields: Object,
