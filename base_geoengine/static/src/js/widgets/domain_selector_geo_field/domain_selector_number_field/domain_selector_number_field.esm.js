@@ -7,8 +7,6 @@
 import { registry } from "@web/core/registry";
 import { _lt } from "@web/core/l10n/translation";
 import { DomainSelectorFieldInputForActiveIds } from "../domain_selector_field_input_for_active_ids/domain_selector_field_input_for_active_ids.esm";
-// import {DomainSelectorFieldInput} from "@web/core/domain_selector/fields/domain_selector_field_input";
-// import {DomainSelectorFieldInputWithTags} from "@web/core/domain_selector/fields/domain_selector_field_input_with_tags";
 import { onDidChange } from "../domain_selector_operators.esm";
 import { Component } from "@odoo/owl";
 
@@ -21,8 +19,6 @@ export class DomainSelectorNumberFieldExtend extends Component {}
 Object.assign(DomainSelectorNumberFieldExtend, {
     template: "base_geoengine.DomainSelectorNumberFieldExtend",
     components: {
-        // DomainSelectorFieldInput,
-        // DomainSelectorFieldInputWithTags,
         DomainSelectorFieldInputForActiveIds,
     },
 
