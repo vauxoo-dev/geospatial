@@ -3,20 +3,18 @@
 /**
  * Copyright 2023 ACSONE SA/NV
  */
-
-import {CheckBox} from "@web/core/checkbox/checkbox";
-import {rasterLayersStore} from "../../../raster_layers_store.esm";
-import {vectorLayersStore} from "../../../vector_layers_store.esm";
-import {useOwnedDialogs, useService} from "@web/core/utils/hooks";
-import {DomainSelectorGeoFieldDialog} from "../../../widgets/domain_selector_geo_field/domain_selector_geo_field_dialog/domain_selector_geo_field_dialog.esm";
-import {FormViewDialog} from "@web/views/view_dialogs/form_view_dialog";
-import {useSortable} from "@web/core/utils/sortable";
+import { CheckBox } from "@web/core/checkbox/checkbox";
+import { rasterLayersStore } from "../../../raster_layers_store.esm";
+import { vectorLayersStore } from "../../../vector_layers_store.esm";
+import { useOwnedDialogs, useService } from "@web/core/utils/hooks";
+import { DomainSelectorGeoFieldDialog } from "../../../widgets/domain_selector_geo_field/domain_selector_geo_field_dialog/domain_selector_geo_field_dialog.esm";
+import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
+import { useSortable } from "@web/core/utils/sortable_owl";
+import { _t } from "@web/core/l10n/translation";
 import { session } from "@web/session";
+import { Component, onWillStart, useRef, useState } from "@odoo/owl";
 import {WarningDialog} from "@web/core/errors/error_dialogs";
 
-
-
-import {Component, onWillStart, useRef, useState} from "@odoo/owl";
 
 export class LayersPanel extends Component {
     setup() {
@@ -25,7 +23,7 @@ export class LayersPanel extends Component {
         this.view = useService("view");
         this.rpc = useService("rpc");
         this.user = useService("user");
-        this.state = useState({geoengineLayers: {}, isFolded: false});
+        this.state = useState({ geoengineLayers: {}, isFolded: false });
         this.addDialog = useOwnedDialogs();
         this.mapBoxToken = session.map_box_token;
         let dataRowId = "";
@@ -44,7 +42,7 @@ export class LayersPanel extends Component {
                     (el) => el.resId === val.id
                 );
 
-                const obj = {id: element.id, resId: element.resId};
+                const obj = { id: element.id, resId: element.resId };
                 Object.assign(val, obj);
             });
             // Set layers in the store
@@ -60,7 +58,7 @@ export class LayersPanel extends Component {
             ref: useRef("root"),
             elements: ".item",
             handle: ".fa-sort",
-            onDragStart({element}) {
+            onDragStart({ element }) {
                 dataRowId = element.dataset.id;
             },
             onDrop: (params) => this.sort(dataRowId, params),
@@ -83,7 +81,7 @@ export class LayersPanel extends Component {
             });
     }
 
-    async sort(dataRowId, {previous}) {
+    async sort(dataRowId, { previous }) {
         const refId = previous ? previous.dataset.id : null;
         this.resquence(dataRowId, refId);
         if (this.isGeoengineAdmin) {
@@ -180,7 +178,7 @@ export class LayersPanel extends Component {
                 });
                 break;
             case "onVisibleChanged":
-                Object.assign(vectorLayer, {isVisible: value, onVisibleChanged: true});
+                Object.assign(vectorLayer, { isVisible: value, onVisibleChanged: true });
                 break;
             case "onLayerChanged":
                 const geo_field_id = await this.orm.call(
@@ -195,7 +193,7 @@ export class LayersPanel extends Component {
                 );
                 value.geo_field_id = geo_field_id;
                 value.attribute_field_id = attribute_field_id;
-                Object.assign(vectorLayer, {...value, onLayerChanged: true});
+                Object.assign(vectorLayer, { ...value, onLayerChanged: true });
                 break;
             case "onSequenceChanged":
                 if (vectorLayer !== undefined) {
@@ -216,7 +214,7 @@ export class LayersPanel extends Component {
             isDebugMode: Boolean(this.env.debug),
             model: vector,
             onSelected: (value) => this.onEditFilterDomainChanged(vector, value),
-            title: this.env._t("Domain editing"),
+            title: _t("Domain editing"),
         });
     }
 
@@ -225,7 +223,7 @@ export class LayersPanel extends Component {
             const record = this.props.vectorModel.records.find(
                 (el) => el.resId === vector.resId
             );
-            await record.update({model_domain: value});
+            await record.update({ model_domain: value });
             await record.save();
         }
         this.onVectorChange(vector, "onDomainChanged", value);
@@ -238,7 +236,7 @@ export class LayersPanel extends Component {
 
         this.addDialog(FormViewDialog, {
             resModel: vector.resModel,
-            title: this.env._t("Editing vector layer"),
+            title: _t("Editing vector layer"),
             viewId: view.view_id[0],
             resId: vector.resId,
             onRecordSaved: (record) =>
@@ -255,7 +253,7 @@ export class LayersPanel extends Component {
 
 LayersPanel.template = "base_geoengine.LayersPanel";
 LayersPanel.props = {
-    model: {type: String, optional: false},
-    vectorModel: {type: Object, optional: false},
+    model: { type: String, optional: false },
+    vectorModel: { type: Object, optional: false },
 };
-LayersPanel.components = {CheckBox};
+LayersPanel.components = { CheckBox };

@@ -4,17 +4,13 @@
  * Copyright 2023 ACSONE SA/NV
  */
 
-import {registry} from "@web/core/registry";
-import {_lt} from "@web/core/l10n/translation";
-import {DomainSelectorFieldInput} from "@web/core/domain_selector/fields/domain_selector_field_input";
-import {DomainSelectorFieldInputForActiveIds} from "../domain_selector_field_input_for_active_ids/domain_selector_field_input_for_active_ids.esm";
-import {DomainSelectorFieldInputWithTags} from "@web/core/domain_selector/fields/domain_selector_field_input_with_tags";
-import {onDidChange} from "../domain_selector_operators.esm";
+import { registry } from "@web/core/registry";
+import { _lt } from "@web/core/l10n/translation";
+import { DomainSelectorFieldInputForActiveIds } from "../domain_selector_field_input_for_active_ids/domain_selector_field_input_for_active_ids.esm";
+import { onDidChange } from "../domain_selector_operators.esm";
+import { Component } from "@odoo/owl";
 
 const dso = registry.category("domain_selector/operator");
-
-import {Component} from "@odoo/owl";
-
 /**
  * This method is extended from DomainSelectorNumberField to add some operators
  * ("in active_ids", "not in active_ids", "in", "not in").
@@ -23,13 +19,11 @@ export class DomainSelectorNumberFieldExtend extends Component {}
 Object.assign(DomainSelectorNumberFieldExtend, {
     template: "base_geoengine.DomainSelectorNumberFieldExtend",
     components: {
-        DomainSelectorFieldInput,
-        DomainSelectorFieldInputWithTags,
         DomainSelectorFieldInputForActiveIds,
     },
 
     onDidTypeChange() {
-        return {value: 0};
+        return { value: 0 };
     },
     getOperators() {
         const addOperators = [
@@ -38,7 +32,7 @@ Object.assign(DomainSelectorNumberFieldExtend, {
                 label: _lt("in active_ids"),
                 value: "in active_ids",
                 onDidChange: onDidChange((fieldChange) => fieldChange()),
-                matches({operator}) {
+                matches({ operator }) {
                     return operator === this.value;
                 },
             },
@@ -47,7 +41,7 @@ Object.assign(DomainSelectorNumberFieldExtend, {
                 label: _lt("not in active_ids"),
                 value: "not in active_ids",
                 onDidChange: onDidChange((fieldChange) => fieldChange()),
-                matches({operator}) {
+                matches({ operator }) {
                     return operator === this.value;
                 },
             },
@@ -71,4 +65,4 @@ Object.assign(DomainSelectorNumberFieldExtend, {
 });
 registry
     .category("domain_selector/fields")
-    .add("integer", DomainSelectorNumberFieldExtend, {force: true});
+    .add("integer", DomainSelectorNumberFieldExtend, { force: true });

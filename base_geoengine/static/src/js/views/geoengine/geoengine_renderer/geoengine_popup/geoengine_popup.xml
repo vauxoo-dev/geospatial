@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="base_geoengine.GeoenginePopUp" owl="1">
+        <div id="popup" class="ol-popup">
+            <div
+                id="popup-closer"
+                class="ol-popup-closer text-primary"
+                t-on-click="props.clickToHidePopup"
+            />
+            <div>
+                <div name="city_id" class="o_field_widget o_field_badge">
+                    <span class="badge rounded-pill" t-out="props.record?._values?.name"/>
+                </div>
+                <ul>
+                    <li class="fw-bold">
+                        Name: <div name="name" class="o_field_widget o_field_char">
+                            <span class="fw-normal" t-out="props.record?._values?.name"/>
+                        </div>
+                    </li>
+                    <li class="fw-bold">
+                        Partner: <span class="fw-normal" t-out="props.record?._values?.partner_id?.[1]"/>
+                    </li>
+                </ul>
+            </div>
+            <div id="popup-content"/>
+            <div class="row d-flex justify-content-center">
+                <button
+                    t-on-click="props.onInfoBoxClicked"
+                    class="btn btn-secondary border w-50"
+                >
+                    OPEN
+                </button>
+            </div>
+        </div>
+    </t>
+</templates>

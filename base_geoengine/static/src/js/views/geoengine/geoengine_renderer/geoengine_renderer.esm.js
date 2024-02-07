@@ -4,21 +4,22 @@
  * Copyright 2023 ACSONE SA/NV
  */
 
-import {loadBundle, templates} from "@web/core/assets";
-import {GeoengineRecord} from "../geoengine_record/geoengine_record.esm";
-import {LayersPanel} from "../layers_panel/layers_panel.esm";
-import {RecordsPanel} from "../records_panel/records_panel.esm";
-import {rasterLayersStore} from "../../../raster_layers_store.esm";
-import {vectorLayersStore} from "../../../vector_layers_store.esm";
-import {useService, useOwnedDialogs} from "@web/core/utils/hooks";
+
+import { loadBundle, templates } from "@web/core/assets";
+import { GeoengineRecord } from "../geoengine_record/geoengine_record.esm";
+import { GeoenginePopUp } from "./geoengine_popup/geoengine_popup.esm";
+import { LayersPanel } from "../layers_panel/layers_panel.esm";
+import { RecordsPanel } from "../records_panel/records_panel.esm";
+import { rasterLayersStore } from "../../../raster_layers_store.esm";
+import { vectorLayersStore } from "../../../vector_layers_store.esm";
+import { useService, useOwnedDialogs } from "@web/core/utils/hooks";
 import {WarningDialog} from "@web/core/errors/error_dialogs";
-import {registry} from "@web/core/registry";
+import { registry } from "@web/core/registry";
 import { session } from "@web/session";
-import {RelationalModel} from "@web/views/relational_model";
-import {evaluateExpr} from "@web/core/py_js/py";
+import { RelationalModel } from "@web/model/relational_model/relational_model";
+import { evaluateExpr } from "@web/core/py_js/py";
 import {
     Component,
-    mount,
     onMounted,
     onPatched,
     onWillStart,
@@ -26,8 +27,11 @@ import {
     reactive,
     useState,
 } from "@odoo/owl";
-import { 
-    DEFAULT_BEGIN_COLOR, 
+import { parseXML } from "@web/core/utils/xml";
+import FormArchParserGeoengine from "../../../form/form_arch_parser";
+import {
+    DEFAULT_BEGIN_COLOR,
+
     DEFAULT_END_COLOR,
     DEFAULT_MIN_SIZE,
     DEFAULT_MAX_SIZE,
@@ -37,9 +41,10 @@ import {
 } from "../../../constants"
 
 
+
 export class GeoengineRenderer extends Component {
     setup() {
-        this.state = useState({selectedFeatures: [], isModified: false, isFit: false});
+        this.state = useState({ selectedFeatures: [], isModified: false, isFit: false, popUpRecord: null });
         this.models = [];
         this.cfg_models = [];
         this.vectorModel = {};
@@ -58,6 +63,7 @@ export class GeoengineRenderer extends Component {
         this.orm = useService("orm");
         this.view = useService("view");
         this.user = useService("user");
+        this.fieldService = useService("field");
 
         // For related model we need to load all the service needed by RelationalModel
         this.services = {};
@@ -171,7 +177,7 @@ export class GeoengineRenderer extends Component {
 
     createBackgroundLayers(backgrounds) {
         const source = [];
-        source.push(new ol.layer.Tile({source: new ol.source.OSM()}));
+        source.push(new ol.layer.Tile({ source: new ol.source.OSM() }));
         const backgroundLayers = backgrounds.map((background) => {
             switch (background.raster_type) {
                 case "osm":
@@ -182,7 +188,7 @@ export class GeoengineRenderer extends Component {
                         source: new ol.source.OSM(),
                     });
                 case "wmts":
-                    const {source_opt, tilegrid_opt, layer_opt} =
+                    const { source_opt, tilegrid_opt, layer_opt } =
                         this.createOptions(background);
                     this.getUrl(background, source_opt);
                     if (background.format_suffix) {
@@ -273,7 +279,7 @@ export class GeoengineRenderer extends Component {
             type: "base",
             style: "default",
         };
-        return {source_opt, tilegrid_opt, layer_opt};
+        return { source_opt, tilegrid_opt, layer_opt };
     }
 
     /**
@@ -337,7 +343,7 @@ export class GeoengineRenderer extends Component {
     }
 
     createEditControl() {
-        const {element, button} = this.createHtmlControl(
+        const { element, button } = this.createHtmlControl(
             '<i class="fa fa-magic"></i>',
             "edit-control ol-unselectable ol-control"
         );
@@ -383,7 +389,7 @@ export class GeoengineRenderer extends Component {
     }
 
     createDrawControl() {
-        const {element, button} = this.createHtmlControl(
+        const { element, button } = this.createHtmlControl(
             '<i class="fa fa-pencil"></i>',
             "draw-control ol-unselectable ol-control"
         );
@@ -420,7 +426,7 @@ export class GeoengineRenderer extends Component {
                     }
                 });
                 this.map.addInteraction(this.drawInteraction);
-                
+
                 this.drawInteraction.on("drawstart", e => {
                     this.props.onDrawStart();
                     this.createTooltipInfo();
@@ -454,7 +460,7 @@ export class GeoengineRenderer extends Component {
     }
 
     createSelectControl() {
-        const {element, button} = this.createHtmlControl(
+        const { element, button } = this.createHtmlControl(
             '<i class="fa fa-mouse-pointer"></i>',
             "select-control ol-unselectable ol-control"
         );
@@ -520,7 +526,7 @@ export class GeoengineRenderer extends Component {
         const element = document.createElement("div");
         element.className = className;
         element.appendChild(button);
-        return {element, button};
+        return { element, button };
     }
 
     createTooltipInfo() {
@@ -625,7 +631,10 @@ export class GeoengineRenderer extends Component {
                         archInfo: this.props.archInfo,
                         templateDocs: this.props.archInfo.templateDocs,
                         model: this.props.data,
-                        attributes,
+                        attributes: {
+                            ...attributes,
+                            id: feature.id_
+                        },
                     });
                 }
 
@@ -647,27 +656,16 @@ export class GeoengineRenderer extends Component {
 
     /**
      * Allow you to mount geoengine record. This displays the record in the info box template.
-     * @param {*} popup
-     * @param {*} archInfo
-     * @param {*} templateDocs
      * @param {*} model
      * @param {*} attributes
      * @param {*} record
      */
-    mountGeoengineRecord({popup, archInfo, templateDocs, model, attributes, record}) {
+    async mountGeoengineRecord({ model, attributes, record }) {
         this.record =
             record === undefined
-                ? model.records.find((record) => record._values.id === attributes.id)
+                ? model.records.find((record) => record.resId === attributes.id)
                 : record;
-        mount(GeoengineRecord, popup, {
-            env: this.env,
-            props: {
-                archInfo,
-                record: this.record,
-                templates: templateDocs,
-            },
-            templates,
-        });
+        this.state.popUpRecord = this.record;
     }
 
     /**
@@ -676,15 +674,21 @@ export class GeoengineRenderer extends Component {
      */
     onDisplayPopupRecord(record) {
         const popup = this.getPopup();
-        const vectorLayer = this.getVectorLayer(record.resId);
-        if(vectorLayer) {
-            const feature = vectorLayer.getSource().getFeatureById(record.resId);
-            if (feature) {
-                this.mountGeoengineRecord({
-                    popup,
-                    archInfo: this.props.archInfo,
-                    templateDocs: this.props.archInfo.templateDocs,
-                    record,
+        const feature = this.vectorSource.getFeatureById(record.resId);
+        if (feature !== undefined) {
+            this.mountGeoengineRecord({
+                popup,
+                archInfo: this.props.archInfo,
+                templateDocs: this.props.archInfo.templateDocs,
+                record,
+            });
+            var coord = ol.extent.getCenter(feature.getGeometry().getExtent());
+            this.overlay.setPosition(coord);
+            var map_view = this.map.getView();
+            if (map_view) {
+                map_view.animate({
+                    center: feature.getGeometry().getFirstCoordinate(),
+                    duration: 200,
                 });
                 const coord = ol.extent.getCenter(feature.getGeometry().getExtent());
                 this.overlay.setPosition(coord);
@@ -712,7 +716,7 @@ export class GeoengineRenderer extends Component {
         const feature = this.vectorSource.getFeatureById(record.resId);
         var map_view = this.map.getView();
         if (map_view) {
-            map_view.fit(feature.getGeometry(), {maxZoom: 14});
+            map_view.fit(feature.getGeometry(), { maxZoom: 14 });
         }
     }
 
@@ -725,7 +729,7 @@ export class GeoengineRenderer extends Component {
         if (extent !== infinite_extent) {
             var map_view = this.map.getView();
             if (map_view) {
-                map_view.fit(extent, {maxZoom: 15});
+                map_view.fit(extent, { maxZoom: 15 });
             }
         }
     }
@@ -1045,7 +1049,7 @@ export class GeoengineRenderer extends Component {
      */
     async loadView(model, view) {
         const viewRegistry = registry.category("views");
-        const fields = await this.view.loadFields(model, {
+        const fields = await this.fieldService.loadFields(model, {
             attributes: [
                 "store",
                 "searchable",
@@ -1056,21 +1060,21 @@ export class GeoengineRenderer extends Component {
                 "related",
             ],
         });
-        const {relatedModels, views} = await this.view.loadViews({
+        const { relatedModels, views } = await this.view.loadViews({
             resModel: model,
             views: [[false, view]],
         });
-        const {ArchParser, Model} = viewRegistry.get(view);
-        const archInfo = new ArchParser().parse(views[view].arch, relatedModels, model);
-
+        const { Model } = viewRegistry.get(view);
+        const arch = parseXML(views[view].arch);
+        const archInfo = new FormArchParserGeoengine().parse(arch, relatedModels, model);
         if (model === "geoengine.vector.layer") {
-            const notAllowedField = Object.keys(fields).filter(
+            const notAllowedFields = Object.keys(fields).filter(
                 (field) =>
                     fields[field] !== undefined &&
                     fields[field].relation !== undefined &&
                     fields[field].relation === "ir.ui.view"
             );
-            notAllowedField.forEach((field) => {
+            notAllowedFields.forEach((field) => {
                 delete field[field];
                 delete archInfo.activeFields[field];
             });
@@ -1078,9 +1082,9 @@ export class GeoengineRenderer extends Component {
         const searchParams = {
             activeFields: archInfo.activeFields,
             resModel: model,
-            fields: fields,
+            fields,
             limit: 10000,
-        };
+        }
         if (model === "geoengine.vector.layer") {
             this.vectorModel = new RelationalModel(
                 this.env,
@@ -1093,11 +1097,14 @@ export class GeoengineRenderer extends Component {
             const toLoadModel = new Model(this.env, searchParams, this.services);
             await toLoadModel.load()
             this.models.push({model: toLoadModel.root, archInfo});
+            this.vectorModel = this.props.data.model;
         }
     }
 
 
     addFeatureToSource(data, cfg, vectorSource) {
+        const clone = obj => Object.assign({}, obj)
+
         data.forEach((item) => {
             let attributes = !item._values ? _.clone(item) : _.clone(item._values);
             this.geometryFields.forEach((geo_field) => delete attributes[geo_field]);
@@ -1225,7 +1232,7 @@ export class GeoengineRenderer extends Component {
         var color_hex = cfg.begin_color || DEFAULT_BEGIN_COLOR;
         var color = chroma(color_hex).alpha(cfg.layer_opacity).css();
 
-        const {fill, stroke} = this.createFillAndStroke(color);
+        const { fill, stroke } = this.createFillAndStroke(color);
 
         values.forEach((value) => {
             if (value in styles_map) {
@@ -1310,7 +1317,7 @@ export class GeoengineRenderer extends Component {
             if (color in styles_map) {
                 return;
             }
-            const {fill, stroke} = this.createFillAndStroke(color);
+            const { fill, stroke } = this.createFillAndStroke(color);
             var olStyleText = this.createStyleText();
             const styles = [
                 new ol.style.Style({
@@ -1337,7 +1344,7 @@ export class GeoengineRenderer extends Component {
             color: darkenColor ?? "#333333",
             width: darkenColor ? 5 : 2,
         });
-        return {fill, stroke};
+        return { fill, stroke };
     }
     /**
      * Allows you to find the index of the color to be used according to its value.
@@ -1381,14 +1388,20 @@ export class GeoengineRenderer extends Component {
 
 GeoengineRenderer.template = "base_geoengine.GeoengineRenderer";
 GeoengineRenderer.props = {
-    isSavedOrDiscarded: {type: Boolean},
-    archInfo: {type: Object},
-    data: {type: Object},
-    openRecord: {type: Function},
-    editable: {type: Boolean, optional: true},
-    updateRecord: {type: Function},
-    onClickDiscard: {type: Function},
-    createRecord: {type: Function},
-    onDrawStart: {type: Function},
+    isSavedOrDiscarded: { type: Boolean },
+    archInfo: { type: Object },
+    data: { type: Object },
+    openRecord: { type: Function },
+    editable: { type: Boolean, optional: true },
+    updateRecord: { type: Function },
+    onClickDiscard: { type: Function },
+    createRecord: { type: Function },
+    onDrawStart: { type: Function },
 };
-GeoengineRenderer.components = {LayersPanel, GeoengineRecord, RecordsPanel};
+GeoengineRenderer.components = {
+    LayersPanel,
+    GeoengineRecord,
+    RecordsPanel,
+    GeoenginePopUp
+};
+

@@ -18,7 +18,7 @@ export const CUSTOM_LAYERS = [
     }
 ]
 export const FEATURE_OPACITY = 0.2;
-export  const LAND_TYPES = [
+export const LAND_TYPES = [
     {
         name: "Field",
         color: "#952323"

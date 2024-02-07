@@ -4,7 +4,7 @@
  * Copyright 2023 ACSONE SA/NV
  */
 
-import {Component, useRef} from "@odoo/owl";
+import { Component, useRef } from "@odoo/owl";
 
 export class SearchBarRecords extends Component {
     setup() {
@@ -23,3 +23,6 @@ export class SearchBarRecords extends Component {
 }
 
 SearchBarRecords.template = "base_geoengine.SearchBarRecords";
+SearchBarRecords.props = {
+    onInputKeyup: Function,
+}

@@ -45,6 +45,7 @@
                                             <t t-esc="vector.name" />
                                             <div t-attf-style="width: 1rem; height: 1rem; background-color: {{vector.begin_color}};"/>
                                         </div>
+                                        <span t-esc="vector.name" class="text-break"/>
                                     </CheckBox>
                                     <button
                                         t-if="vector.model_id &amp; isGeoengineAdmin"
