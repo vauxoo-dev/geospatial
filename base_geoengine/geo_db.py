@@ -81,7 +81,7 @@ def _postgis_index_name(table, col_name):
 def create_geo_index(env, columnname, tablename):
     """Create the given index unless it exists."""
     indexname = _postgis_index_name(tablename, columnname)
-    if sql.index_exists(env.cr, indexname):
+    if sql.index_exists(env, indexname):
         return
     # pylint: disable=E8103
     env.cr.execute(

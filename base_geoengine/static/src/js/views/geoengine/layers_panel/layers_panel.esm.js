@@ -13,6 +13,8 @@ import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
 import { useSortable } from "@web/core/utils/sortable_owl";
 import { _t } from "@web/core/l10n/translation";
 import { Component, onWillStart, useRef, useState } from "@odoo/owl";
+import { session } from "@web/session";
+import {WarningDialog} from "@web/core/errors/error_dialogs";
 
 export class LayersPanel extends Component {
     setup() {
@@ -24,6 +26,7 @@ export class LayersPanel extends Component {
         this.state = useState({ geoengineLayers: {}, isFolded: false });
         this.addDialog = useOwnedDialogs();
         let dataRowId = "";
+        this.mapBoxToken = session.map_box_token;
 
         /**
          * Call the model method "get_geoengine_layers" to get all the layers
@@ -38,9 +41,10 @@ export class LayersPanel extends Component {
                 const element = this.props.vectorModel.records.find(
                     (el) => el.resId === val.id
                 );
-
-                const obj = { id: element.id, resId: element.resId };
-                Object.assign(val, obj);
+                if(element) {
+                    const obj = { id: element.id, resId: element.resId };
+                    Object.assign(val, obj);
+                }
             });
             // Set layers in the store
             rasterLayersStore.setRasters(this.state.geoengineLayers.backgrounds);
@@ -130,6 +134,15 @@ export class LayersPanel extends Component {
      * @param {*} layer
      */
     onRasterChange(layer) {
+        if (layer.raster_type === "map_box" && !this.mapBoxToken) {
+            this.addDialog(WarningDialog, {
+                title: _t("Warning"),
+                message: _t(
+                    "You need to set a MapBox token in the settings to display this layer."
+                ),
+            });
+            return;
+        }
         const indexRaster = rasterLayersStore.rastersLayers.findIndex(
             (raster) => raster.name === layer.name
         );

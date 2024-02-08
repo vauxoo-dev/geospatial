@@ -61,7 +61,7 @@ export class GeoengineController extends Component {
      * @param {*} resModel
      * @param {*} resId
      */
-    async openRecord(resModel, resId) {
+    async openRecord(resModel, resId, context={ edit: true, create: false }) {
         const { views } = await this.view.loadViews({ resModel, views: [[false, "form"]] });
         this.actionService.doAction({
             type: "ir.actions.act_window",
@@ -69,7 +69,7 @@ export class GeoengineController extends Component {
             views: [[views.form.id, "form"]],
             res_id: resId,
             target: "new",
-            context: { edit: false, create: false },
+            context,
         });
     }
 
@@ -98,6 +98,8 @@ export class GeoengineController extends Component {
     async onSaveRecord() {
         await this.model.root.load();
         this.render(true);
+        // TODO: check if this reload is necesary
+        // window.location.reload();
     }
 
     /**

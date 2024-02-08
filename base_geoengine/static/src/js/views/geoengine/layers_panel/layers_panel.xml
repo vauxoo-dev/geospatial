@@ -2,7 +2,7 @@
 <templates>
     <t t-name="base_geoengine.LayersPanel" owl="1">
         <div
-            class="menu border-end"
+            class="menu border-end overflow-auto"
             t-attf-class="{{ state.isFolded ? 'o_layer_panel_fold ' : 'o_layer_panel bg-view' }}"
         >
             <div
@@ -26,10 +26,11 @@
                     </header>
                     <div t-ref="root" class="root">
                         <ul class="list p-0">
+                            <!-- TODO: replace the t-key -->
                             <li
                                 t-foreach="state.geoengineLayers.actives"
                                 t-as="vector"
-                                t-key="vector.resId"
+                                t-key="vector.name"
                                 class="item d-flex align-items-center"
                                 t-att-data-id="vector.id"
                             >
@@ -41,7 +42,10 @@
                                         value="vector.isVisible"
                                         t-on-change="() => this.onVectorChange(vector, 'onVisibleChanged', !vector.isVisible)"
                                     >
-                                        <span t-esc="vector.name" class="text-break"/>
+                                        <div class="d-flex align-items-center" style="gap: 0 1rem;">
+                                            <t t-esc="vector.name" />
+                                            <div t-attf-style="width: 1rem; height: 1rem; background-color: {{vector.begin_color}};"/>
+                                        </div>
                                     </CheckBox>
                                     <button
                                         t-if="vector.model_id &amp; isGeoengineAdmin"

@@ -11,10 +11,12 @@ import { LayersPanel } from "../layers_panel/layers_panel.esm";
 import { RecordsPanel } from "../records_panel/records_panel.esm";
 import { rasterLayersStore } from "../../../raster_layers_store.esm";
 import { vectorLayersStore } from "../../../vector_layers_store.esm";
-import { useService } from "@web/core/utils/hooks";
+import { useService, useOwnedDialogs } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { RelationalModel } from "@web/model/relational_model/relational_model";
 import { evaluateExpr } from "@web/core/py_js/py";
+import {WarningDialog} from "@web/core/errors/error_dialogs";
+import { session } from "@web/session";
 import {
     Component,
     onMounted,
@@ -32,9 +34,10 @@ import {
     DEFAULT_MIN_SIZE,
     DEFAULT_MAX_SIZE,
     DEFAULT_NUM_CLASSES,
-    LEGEND_MAX_ITEMS
+    LEGEND_MAX_ITEMS,
+    PROJECT_AGRICULTURE_SCOUT_MODEL
 } from "../../../constants";
-
+import { _t } from "@web/core/l10n/translation";
 
 export class GeoengineRenderer extends Component {
     setup() {
@@ -43,6 +46,8 @@ export class GeoengineRenderer extends Component {
         this.cfg_models = [];
         this.vectorModel = {};
         this.legends = [];
+        this.mapBoxToken = session.map_box_token,
+        this.addDialog = useOwnedDialogs();
 
         // When a change is issued in the rasterLayersStore or the vectorLayersStore the LayerChanged method is called.
         this.rasterLayersStore = reactive(rasterLayersStore, () =>
@@ -70,8 +75,12 @@ export class GeoengineRenderer extends Component {
                         "/base_geoengine/static/lib/ol-7.2.2/ol.js",
                         "/base_geoengine/static/lib/chromajs-2.4.2/chroma.js",
                         "/base_geoengine/static/lib/geostats-2.0.0/geostats.js",
+                        '/base_geoengine/static/lib/geocoder-4.3.1/ol-geocoder.js'
                     ],
-                    cssLibs: ["/base_geoengine/static/lib/geostats-2.0.0/geostats.css"],
+                    cssLibs: [
+                        "/base_geoengine/static/lib/geostats-2.0.0/geostats.css",
+                        '/base_geoengine/static/lib/geocoder-4.3.1/ol-geocoder.css'
+                    ],
                 }),
                 this.loadVectorModel(),
                 (this.isGeoengineAdmin = await this.user.hasGroup(
@@ -231,6 +240,14 @@ export class GeoengineRenderer extends Component {
                         visible: !background.overlay,
                         source: new ol.source.TileWMS(source_opt_wms),
                     });
+                case "map_box":
+                    return new ol.layer.Tile({
+                        title: background.name,
+                        visible: !background.overlay,
+                        source: new ol.source.XYZ({
+                            url: `${background.url}${this.mapBoxToken}`,
+                        }),
+                    })
                 default:
                     return undefined;
             }
@@ -266,12 +283,60 @@ export class GeoengineRenderer extends Component {
      * Add 'ScaleLine' control.
      */
     setupControls() {
+        this.createFsControl();
+        this.createSearchControl();
         if (this.props.editable && this.isGeoengineAdmin) {
             this.createDrawControl();
             this.createSelectControl();
         }
         const scaleLine = new ol.control.ScaleLine();
         this.map.addControl(scaleLine);
+    }
+
+    createSearchControl() {
+        const geocoder = new Geocoder('nominatim', {
+            provider: 'osm',
+            lang: 'es-ES',
+            placeholder: _t('Search for an address'),
+            limit: 5,
+            autoComplete: true,
+            keepOpen: false,
+            featureStyle: new ol.style.Style({
+                image: new ol.style.Icon({
+                    src: 'base_geoengine/static/src/images/pin-icon.webp',
+                    anchor: [0.5, 1],
+                }),
+            }),
+        });
+        geocoder.on('addresschosen', (e) => {
+            const coords = e.coordinate;
+            this.map.getView().animate({
+                center: coords,
+                zoom: 17,
+            });
+        });
+        geocoder.element.classList.add('geocoder-control-geoengine')
+        this.map.addControl(geocoder);
+    }
+
+    createFsControl() {
+        const {element, button} = this.createHtmlControl(
+            '<i class="fa fa-arrows-alt"></i>',
+            "fs-control ol-unselectable ol-control"
+        );
+        button.addEventListener("click", () => {
+            const mapContainer = this.map.getTargetElement();
+            if (mapContainer.requestFullscreen) {
+                document.fullscreenElement ? document.exitFullscreen() : mapContainer.requestFullscreen();
+            }
+            if (mapContainer.webkitRequestFullscreen) {
+                document.fullscreenElement ? document.exitFullscreen() : mapContainer.webkitRequestFullscreen();
+            }
+        });
+        const FsControl = new ol.control.Control({
+            element: element,
+        });
+        this.map.addControl(FsControl);
     }
 
     createEditControl() {
@@ -340,6 +405,22 @@ export class GeoengineRenderer extends Component {
                 this.drawInteraction = new ol.interaction.Draw({
                     type: this.props.data.fields[key].geo_type.geo_type,
                     source: new ol.source.Vector(),
+                    condition: (e) => {
+                        let condition = true;
+                        e.map.forEachFeatureAtPixel(e.pixel, (_, layer) => {
+                            if (layer instanceof ol.layer.Vector) {
+                                this.addDialog(WarningDialog, {
+                                    title: _t("Warning"),
+                                    message: _t(
+                                        `Property boundaries cannot overlap. Please draw a new boundary that does not overlap with existing boundaries.`
+                                    ),
+                                });
+                                condition = !condition;
+                                return true;  // Stop the iteration
+                            }
+                        });
+                        return condition;
+                    }
                 });
                 this.map.addInteraction(this.drawInteraction);
 
@@ -590,24 +671,36 @@ export class GeoengineRenderer extends Component {
      */
     onDisplayPopupRecord(record) {
         const popup = this.getPopup();
-        const feature = this.vectorSource.getFeatureById(record.resId);
-        if (feature !== undefined) {
-            this.mountGeoengineRecord({
-                popup,
-                archInfo: this.props.archInfo,
-                templateDocs: this.props.archInfo.templateDocs,
-                record,
-            });
-            var coord = ol.extent.getCenter(feature.getGeometry().getExtent());
-            this.overlay.setPosition(coord);
-            var map_view = this.map.getView();
-            if (map_view) {
-                map_view.animate({
-                    center: feature.getGeometry().getFirstCoordinate(),
-                    duration: 200,
+        const vectorLayer = this.getVectorLayer(record.resId);
+        if(vectorLayer) {
+            const feature = vectorLayer.getSource().getFeatureById(record.resId);
+            if (feature) {
+                this.mountGeoengineRecord({
+                    popup,
+                    archInfo: this.props.archInfo,
+                    templateDocs: this.props.archInfo.templateDocs,
+                    record,
                 });
+                const coord = ol.extent.getCenter(feature.getGeometry().getExtent());
+                this.overlay.setPosition(coord);
+                const mapView = this.map.getView();
+                if (mapView) {
+                    mapView.animate({
+                        center: feature.getGeometry().getFirstCoordinate(),
+                        duration: 200,
+                    });
+                }
             }
         }
+    }
+
+    getVectorLayer(featureId) {
+        const vectorLayers = this.map.getLayers().getArray()
+        return vectorLayers.find(layer => {
+            if (layer instanceof ol.layer.Vector) {
+                return !!layer.getSource().getFeatureById(featureId);
+            }
+        });
     }
 
     zoomOnFeature(record) {
@@ -648,7 +741,11 @@ export class GeoengineRenderer extends Component {
      * openRecord method.
      */
     onInfoBoxClicked() {
-        this.props.openRecord(this.record.resModel, this.record.resId);
+        this.props.openRecord(this.record.resModel, this.record.resId, {
+            edit: true, 
+            create: false,
+            comes_from_js: true,
+        });
     }
 
     /**
@@ -777,7 +874,7 @@ export class GeoengineRenderer extends Component {
         const vectorLayers = await this.createVectorLayers();
         this.vectorLayersResult = await Promise.all(vectorLayers);
         this.map.getLayers().forEach((layer) => {
-            if (layer.get("title") === "Overlays") {
+            if (layer && layer.get("title") === "Overlays") {
                 this.map.removeLayer(layer);
             }
         });
@@ -824,6 +921,7 @@ export class GeoengineRenderer extends Component {
         if (cfg.model) {
             this.cfg_models.push(cfg.model);
             const fields_to_read = this.getFieldsToRead(cfg);
+            // TODO: when loading the vue its when the code fails
             await this.loadView(cfg.model, "geoengine");
             const data = await this.getModelData(cfg, fields_to_read);
             this.styleVectorLayerAndLegend(cfg, data, lv);
@@ -854,13 +952,12 @@ export class GeoengineRenderer extends Component {
         return fields_to_read;
     }
 
-    async getModelData(cfg, fields_to_read) {
+    async getModelData(cfg, fieldsToRead) {
         const domain = this.evalModelDomain(cfg);
-        let data = await this.orm.searchRead(cfg.model, [domain][0], fields_to_read);
-        const modelsRecords = this.models.find((e) => e.model.resModel === cfg.model)
-            .model.records;
-        data = data.map((data) => modelsRecords.find((rec) => rec.resId === data.id));
-        return data;
+        const recordValues = await this.orm.searchRead(cfg.model, domain, fieldsToRead);
+        const { model : { records } } = this.models.find((e) => e.model.resModel === cfg.model);
+        const data = recordValues.map((values) => records.find((rec) => rec.resId === values.id));
+        return data.filter(Boolean);
     }
 
     styleVectorLayerAndLegend(cfg, data, lv) {
@@ -894,6 +991,8 @@ export class GeoengineRenderer extends Component {
         const vectorSource = new ol.source.Vector();
         this.addFeatureToSource(res, cfg, vectorSource);
         lv.setSource(vectorSource);
+        // We need to keep the source in the map to be able to retrieve it later.
+        this.map.addLayer(lv);
     }
 
     /**
@@ -980,11 +1079,10 @@ export class GeoengineRenderer extends Component {
         }
         if (model === "geoengine.vector.layer") {
             this.vectorModel = this.props.data.model;
-        } else if (this.models.find((e) => e.model.resModel === model) === undefined) {
+        } else if (!this.models.find((e) => e.model.resModel === model)) {
             const toLoadModel = new Model(this.env, searchParams, this.services);
-            await toLoadModel.load().then(() => {
-                this.models.push({ model: toLoadModel.root, archInfo });
-            });
+            await toLoadModel.load()
+            this.models.push({model: toLoadModel.root, archInfo});
         }
     }
 
@@ -996,9 +1094,9 @@ export class GeoengineRenderer extends Component {
                 item._values === undefined ? clone(item) : clone(item._values);
             this.geometryFields.forEach((geo_field) => delete attributes[geo_field]);
 
-            if (cfg.display_polygon_labels === true) {
+            if(cfg.display_polygon_labels && item.resModel !== PROJECT_AGRICULTURE_SCOUT_MODEL) {
                 attributes.label =
-                    item._values === undefined
+                    !item._values
                         ? item[cfg.attribute_field_id[1]]
                         : item._values[cfg.attribute_field_id[1]];
             } else {
@@ -1007,7 +1105,7 @@ export class GeoengineRenderer extends Component {
             attributes.color = cfg.begin_color;
 
             const json_geometry =
-                item._values === undefined
+                !item._values
                     ? item[cfg.geo_field_id[1]]
                     : item._values[cfg.geo_field_id[1]];
             if (json_geometry) {
@@ -1018,6 +1116,17 @@ export class GeoengineRenderer extends Component {
                 });
                 feature.setId(item.resId);
 
+                vectorSource.addFeature(feature);
+            }
+            if (item.resModel === PROJECT_AGRICULTURE_SCOUT_MODEL) {
+                const {latitude, longitude} = item._values;
+                const feature = new ol.Feature({
+                    geometry: new ol.geom.Point([longitude, latitude]),
+                    labelPoint: new ol.geom.Point([longitude, latitude]),
+                    attributes: attributes,
+                    model: cfg.model,
+                })
+                feature.setId(item.resId);
                 vectorSource.addFeature(feature);
             }
         });
@@ -1143,13 +1252,11 @@ export class GeoengineRenderer extends Component {
 
     styleVectorLayerDefault(cfg) {
         const color_hex = cfg.begin_color || DEFAULT_BEGIN_COLOR;
-        var color = chroma(color_hex).alpha(cfg.layer_opacity).css();
-        // Basic
-
-        const { fill, stroke } = this.createFillAndStroke(color);
-
-        var olStyleText = this.createStyleText();
-        var styles = [
+        const color = chroma(color_hex).alpha(cfg.layer_opacity).css();
+        const darkenColor = chroma(color).alpha(1).darken(1).css();
+        const {fill, stroke} = this.createFillAndStroke(color, darkenColor);
+        const olStyleText = this.createStyleText();
+        const styles = [
             new ol.style.Style({
                 image: new ol.style.Circle({
                     fill: fill,
@@ -1163,11 +1270,8 @@ export class GeoengineRenderer extends Component {
         ];
         return {
             style: (feature) => {
-                var label_text = feature.values_.attributes.label;
-                if (label_text === false) {
-                    label_text = "";
-                }
-                styles[0].text_.text_ = label_text;
+                const labelText = feature.values_.attributes?.label ?? "";
+                styles[0].text_.text_ = labelText;
                 return styles;
             },
             legend: "",
@@ -1176,12 +1280,13 @@ export class GeoengineRenderer extends Component {
     createStyleText() {
         return new ol.style.Text({
             text: "",
+            font: "bold 8px Calibri,sans-serif",
             fill: new ol.style.Fill({
                 color: "#000000",
             }),
             stroke: new ol.style.Stroke({
                 color: "#FFFFFF",
-                width: 5,
+                width: 2,
             }),
         });
     }
@@ -1216,15 +1321,15 @@ export class GeoengineRenderer extends Component {
         return styles_map;
     }
 
-    createFillAndStroke(color) {
+    createFillAndStroke(color, darkenColor=null) {
         const fill = new ol.style.Fill({
             color: color,
         });
         const stroke = new ol.style.Stroke({
-            color: "#333333",
-            width: 2,
+            color: darkenColor ?? "#333333",
+            width: darkenColor ? 5 : 2,
         });
-        return { fill, stroke };
+        return {fill, stroke};
     }
     /**
      * Allows you to find the index of the color to be used according to its value.

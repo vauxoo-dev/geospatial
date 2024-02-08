@@ -419,8 +419,6 @@ export class FieldGeoEngineEditMap extends Component {
             });
 
         } else {
-            if (this.isGeoengineView) return;
-
             const editLandControl = this.createEditLandControl()
             this.editLandControl = new ol.control.Control({ element: editLandControl });
             this.map.addControl(this.editLandControl);
@@ -659,7 +657,8 @@ export class FieldGeoEngineEditMap extends Component {
                     const record = await this.createRecord({
                         longitude,
                         latitude,
-                        land_id: this.props.record.data.id
+                        land_id: this.props.record.data.id,
+                        geopoint: this.format.writeGeometry(e.feature.getGeometry()),
                     }, "project.agriculture.scout", removeLayer)
                     if (!record) return;
                     const { name } = record.data
@@ -1241,7 +1240,8 @@ export class FieldGeoEngineEditMap extends Component {
             internalProjection: this.map.getView().getProjection(),
             externalProjection: "EPSG:" + this.srid,
         });
-        if (!this.props.readonly && this.props.record.data.city_id) this.setupControls();
+        // TODO: maybe the id is not in this key
+        if (!this.props.readonly && this.map && this.props.record.data?.id) this.setupControls();
         if (this.mapBoxToken) {
             this.map.on('pointermove', (e) => {
                 const feature = this.map.forEachFeatureAtPixel(e.pixel, f => f);

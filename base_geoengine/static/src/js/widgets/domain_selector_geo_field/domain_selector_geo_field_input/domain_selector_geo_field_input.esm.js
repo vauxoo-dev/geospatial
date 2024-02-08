@@ -99,7 +99,7 @@ export class DomainSelectorGeoFieldInput extends Component {
             isDebugMode: Boolean(this.env.debug),
             fieldName: this.state.fieldName,
             onSelected: (value) => this.update(value),
-            title: this.env._t("Subdomain"),
+            title: _t("Subdomain"),
         });
     }
 
