@@ -61,7 +61,7 @@ export class GeoengineController extends Component {
      * @param {*} resModel
      * @param {*} resId
      */
-    async openRecord(resModel, resId) {
+    async openRecord(resModel, resId, context={ edit: true, create: false }) {
         const { views } = await this.view.loadViews({ resModel, views: [[false, "form"]] });
         this.actionService.doAction({
             type: "ir.actions.act_window",
@@ -69,10 +69,9 @@ export class GeoengineController extends Component {
             views: [[views.form.id, "form"]],
             res_id: resId,
             target: "new",
-            context: { edit: false, create: false },
+            context,
         });
     }
-
     /**
      * When you finished drawing a new shape, this method is called to open form view and create the record.
      * @param {*} resModel

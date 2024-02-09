@@ -33,10 +33,10 @@
                             t-foreach="state.records"
                             t-as="record"
                             t-key="record.resId"
+                            t-on-click="() => this.onDisplayPopupRecord(record)"
                         >
                             <button
                                 class="btn btn-record"
-                                t-on-click="() => this.onDisplayPopupRecord(record)"
                             >
                                 <span>
                                     <t t-esc="record.data.display_name" />

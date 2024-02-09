@@ -295,6 +295,7 @@ export class FieldGeoEngineEditMap extends Component {
                 this.mainLand = ftGeometry;
                 const extent = this.mainLand.getExtent();
                 this.mainLandCenter = ol.extent.getCenter(extent);
+                ft.set("coordinates", this.mainLandCenter)
             }
             this.source.clear();
             this.source.addFeature(ft);
@@ -419,8 +420,6 @@ export class FieldGeoEngineEditMap extends Component {
             });
 
         } else {
-            if (this.isGeoengineView) return;
-
             const editLandControl = this.createEditLandControl()
             this.editLandControl = new ol.control.Control({ element: editLandControl });
             this.map.addControl(this.editLandControl);
@@ -1087,7 +1086,6 @@ export class FieldGeoEngineEditMap extends Component {
             if (!feature) return;
             const newFtGeometry = feature.getGeometry();
             const coordinates = feature.getGeometry().getCoordinates();
-            debugger
             const body = _t("Changes will be reverted");
             const cancelLabel = _t("Continue editing");
             const saveChangesLabel = _t("Save changes");
@@ -1260,10 +1258,11 @@ export class FieldGeoEngineEditMap extends Component {
                 if (featureFound) return;
                 if (this.coordsTooltipOverlay && !this.state.currentInteraction.active) {
                     const coordinates = feature.get('coordinates');
-                    if (coordinates) {
+                    const name = feature.get("landName")
+                    if (coordinates && name ) {
                         this.coordsTooltipElement.innerHTML = `
                             <div class="ol-tooltip-values-title">
-                                <h5>${feature.get("landName")}</h5>
+                                <h5>${ name }</h5>
                             </div>
                             <div class="ol-tooltip-values-content">
                                 <p>
@@ -1286,7 +1285,7 @@ export class FieldGeoEngineEditMap extends Component {
                     this.coordsTooltipOverlay.setPosition(undefined);
                 }
             });
-            if (!featureFound && this.coordsTooltipOverlay && this.state.currentInteraction.active) {
+            if (!featureFound && this.coordsTooltipOverlay && !this.state.currentInteraction.active) {
                 this.coordsTooltipOverlay.setPosition(undefined);
             }
         });
@@ -1429,7 +1428,6 @@ export class FieldGeoEngineEditMap extends Component {
                         _t("Record created successfully"),
                         "success"
                     )
-                    console.log(record);
                     resolve(r);
                 }
             },
