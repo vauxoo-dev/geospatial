@@ -11,7 +11,7 @@ import { LayersPanel } from "../layers_panel/layers_panel.esm";
 import { RecordsPanel } from "../records_panel/records_panel.esm";
 import { rasterLayersStore } from "../../../raster_layers_store.esm";
 import { vectorLayersStore } from "../../../vector_layers_store.esm";
-import { useService } from "@web/core/utils/hooks";
+import { useService, useOwnedDialogs } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { RelationalModel } from "@web/model/relational_model/relational_model";
 import { evaluateExpr } from "@web/core/py_js/py";
@@ -32,8 +32,11 @@ import {
     DEFAULT_MIN_SIZE,
     DEFAULT_MAX_SIZE,
     DEFAULT_NUM_CLASSES,
-    LEGEND_MAX_ITEMS
+    LEGEND_MAX_ITEMS,
 } from "../../../constants";
+import { session } from "@web/session";
+import {WarningDialog} from "@web/core/errors/error_dialogs";
+import { _t } from "@web/core/l10n/translation";
 
 
 export class GeoengineRenderer extends Component {
@@ -43,6 +46,8 @@ export class GeoengineRenderer extends Component {
         this.cfg_models = [];
         this.vectorModel = {};
         this.legends = [];
+        this.mapBoxToken = session.map_box_token;
+        this.addDialog = useOwnedDialogs();
 
         // When a change is issued in the rasterLayersStore or the vectorLayersStore the LayerChanged method is called.
         this.rasterLayersStore = reactive(rasterLayersStore, () =>
@@ -70,8 +75,12 @@ export class GeoengineRenderer extends Component {
                         "/base_geoengine/static/lib/ol-7.2.2/ol.js",
                         "/base_geoengine/static/lib/chromajs-2.4.2/chroma.js",
                         "/base_geoengine/static/lib/geostats-2.0.0/geostats.js",
+                        "/base_geoengine/static/lib/geocoder-4.3.1/ol-geocoder.js"
                     ],
-                    cssLibs: ["/base_geoengine/static/lib/geostats-2.0.0/geostats.css"],
+                    cssLibs: [
+                        "/base_geoengine/static/lib/geostats-2.0.0/geostats.css",
+                        "/base_geoengine/static/lib/geocoder-4.3.1/ol-geocoder.css"
+                    ],
                 }),
                 this.loadVectorModel(),
                 (this.isGeoengineAdmin = await this.user.hasGroup(
@@ -231,6 +240,14 @@ export class GeoengineRenderer extends Component {
                         visible: !background.overlay,
                         source: new ol.source.TileWMS(source_opt_wms),
                     });
+                case "map_box":
+                    return new ol.layer.Tile({
+                        title: background.name,
+                        visible: !background.overlay,
+                        source: new ol.source.XYZ({
+                            url: `${background.url}${this.mapBoxToken}`,
+                        }),
+                    })
                 default:
                     return undefined;
             }
@@ -266,12 +283,60 @@ export class GeoengineRenderer extends Component {
      * Add 'ScaleLine' control.
      */
     setupControls() {
+        this.createFsControl();
+        this.createSearchControl();
         if (this.props.editable && this.isGeoengineAdmin) {
             this.createDrawControl();
             this.createSelectControl();
         }
         const scaleLine = new ol.control.ScaleLine();
         this.map.addControl(scaleLine);
+    }
+
+    createSearchControl() {
+        const geocoder = new Geocoder('nominatim', {
+            provider: 'osm',
+            lang: 'es-ES',
+            placeholder: _t('Search for an address'),
+            limit: 5,
+            autoComplete: true,
+            keepOpen: false,
+            featureStyle: new ol.style.Style({
+                image: new ol.style.Icon({
+                    src: 'base_geoengine/static/src/images/pin-icon.webp',
+                    anchor: [0.5, 1],
+                }),
+            }),
+        });
+        geocoder.on('addresschosen', (e) => {
+            const coords = e.coordinate;
+            this.map.getView().animate({
+                center: coords,
+                zoom: 17,
+            });
+        });
+        geocoder.element.classList.add('geocoder-control-geoengine')
+        this.map.addControl(geocoder);
+    }
+
+    createFsControl() {
+        const {element, button} = this.createHtmlControl(
+            '<i class="fa fa-arrows-alt"></i>',
+            "fs-control ol-unselectable ol-control"
+        );
+        button.addEventListener("click", () => {
+            const mapContainer = this.map.getTargetElement();
+            if (mapContainer.requestFullscreen) {
+                document.fullscreenElement ? document.exitFullscreen() : mapContainer.requestFullscreen();
+            }
+            if (mapContainer.webkitRequestFullscreen) {
+                document.fullscreenElement ? document.exitFullscreen() : mapContainer.webkitRequestFullscreen();
+            }
+        });
+        const FsControl = new ol.control.Control({
+            element: element,
+        });
+        this.map.addControl(FsControl);
     }
 
     createEditControl() {
@@ -340,6 +405,22 @@ export class GeoengineRenderer extends Component {
                 this.drawInteraction = new ol.interaction.Draw({
                     type: this.props.data.fields[key].geo_type.geo_type,
                     source: new ol.source.Vector(),
+                    condition: (e) => {
+                        let condition = true;
+                        e.map.forEachFeatureAtPixel(e.pixel, (_, layer) => {
+                            if (layer instanceof ol.layer.Vector) {
+                                this.addDialog(WarningDialog, {
+                                    title: _t("Warning"),
+                                    message: _t(
+                                        `Property boundaries cannot overlap. Please draw a new boundary that does not overlap with existing boundaries.`
+                                    ),
+                                });
+                                condition = !condition;
+                                return true;  // Stop the iteration
+                            }
+                        });
+                        return condition;
+                    }
                 });
                 this.map.addInteraction(this.drawInteraction);
 
@@ -648,7 +729,11 @@ export class GeoengineRenderer extends Component {
      * openRecord method.
      */
     onInfoBoxClicked() {
-        this.props.openRecord(this.record.resModel, this.record.resId);
+        this.props.openRecord(this.record.resModel, this.record.resId, {
+            edit: true, 
+            create: false,
+            comes_from_js: true,
+        });
     }
 
     /**

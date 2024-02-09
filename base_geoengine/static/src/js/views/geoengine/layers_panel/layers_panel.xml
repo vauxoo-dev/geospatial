@@ -2,7 +2,7 @@
 <templates>
     <t t-name="base_geoengine.LayersPanel" owl="1">
         <div
-            class="menu border-end"
+            class="menu border-end overflow-auto"
             t-attf-class="{{ state.isFolded ? 'o_layer_panel_fold ' : 'o_layer_panel bg-view' }}"
         >
             <div

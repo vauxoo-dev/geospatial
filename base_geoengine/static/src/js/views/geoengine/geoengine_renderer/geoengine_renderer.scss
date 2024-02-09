@@ -65,3 +65,21 @@
 .ol-popup-closer:after {
     content: "✖";
 }
+@mixin control-position($top, $top-md, $left: 0.5em) {
+    top: $top;
+    left: $left;
+    @include media-breakpoint-up(md) {
+        top: $top-md;
+    }
+}
+.fs-control {
+    @include control-position(130px, 110px)
+}
+.geocoder-control-geoengine {
+    .gcd-gl-control {
+        &.ol-control {
+            background-color: transparent;
+        }
+        @include control-position(80px, 80px, 0.1em)
+    }
+}
