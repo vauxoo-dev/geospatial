@@ -33,10 +33,13 @@ import {
     DEFAULT_MAX_SIZE,
     DEFAULT_NUM_CLASSES,
     LEGEND_MAX_ITEMS,
+    PROJECT_AGRICULTURE_SCOUT_MODEL,
+    SCOUT_FIELDS
 } from "../../../constants";
 import { session } from "@web/session";
 import {WarningDialog} from "@web/core/errors/error_dialogs";
 import { _t } from "@web/core/l10n/translation";
+import { generateGeoPoints } from "../../../helpers"
 
 
 export class GeoengineRenderer extends Component {
@@ -89,14 +92,15 @@ export class GeoengineRenderer extends Component {
             ])
         );
 
-        onMounted(() => {
+        onMounted(async () => {
             // Retrives all vector layers in the store.
             this.geometryFields = this.vectorLayersStore.vectorsLayers.map(
                 (layer) => layer.geo_field_id[1]
             );
-
+            this.geoPoints = await this.getGeoPoints();
             this.vectorSources = [];
             this.renderMap();
+            this.addGeoPointsToMap(this.geoPoints);
             this.renderVectorLayers();
         });
 
@@ -112,6 +116,30 @@ export class GeoengineRenderer extends Component {
                 this.renderVectorLayers();
             }
         });
+    }
+
+    addGeoPointsToMap() {
+        const vectorSource = new ol.source.Vector({});
+        generateGeoPoints(this.geoPoints, vectorSource);
+        this.geoPointsSource = new ol.layer.Vector({
+            source: vectorSource,
+        })
+        this.map.addLayer(this.geoPointsSource);
+        // use the state.geoengineLayers.actives to toggle the visibility of the layer
+        // const currentVisibility = this.geoPointsSource.getVisible();
+        // this.geoPointsSource.setVisible(!currentVisibility);
+    }
+
+    async getGeoPoints() {
+        const data = await this.orm.searchRead(
+            PROJECT_AGRICULTURE_SCOUT_MODEL, 
+            [], 
+            SCOUT_FIELDS
+        );
+        return data.map(({ latitude, longitude, name, id }) => ({
+            data: { latitude, longitude, name },
+            evalContext: { id }
+        }))
     }
 
     async loadVectorModel() {
@@ -1228,13 +1256,12 @@ export class GeoengineRenderer extends Component {
 
     styleVectorLayerDefault(cfg) {
         const color_hex = cfg.begin_color || DEFAULT_BEGIN_COLOR;
-        var color = chroma(color_hex).alpha(cfg.layer_opacity).css();
+        const color = chroma(color_hex).alpha(cfg.layer_opacity).css();
+        const darkenColor = chroma(color).alpha(1).darken(1).css();
         // Basic
-
-        const { fill, stroke } = this.createFillAndStroke(color);
-
-        var olStyleText = this.createStyleText();
-        var styles = [
+        const {fill, stroke} = this.createFillAndStroke(color, darkenColor);
+        const olStyleText = this.createStyleText();
+        const styles = [
             new ol.style.Style({
                 image: new ol.style.Circle({
                     fill: fill,
@@ -1248,25 +1275,25 @@ export class GeoengineRenderer extends Component {
         ];
         return {
             style: (feature) => {
-                var label_text = feature.values_.attributes.label;
-                if (label_text === false) {
-                    label_text = "";
-                }
-                styles[0].text_.text_ = label_text;
+                const labelText = feature.values_.attributes?.label ?? "";
+                styles[0].text_.text_ = labelText;
                 return styles;
             },
             legend: "",
         };
     }
+
     createStyleText() {
         return new ol.style.Text({
             text: "",
+            font: "bold 8px Calibri,sans-serif",
             fill: new ol.style.Fill({
                 color: "#000000",
+                
             }),
             stroke: new ol.style.Stroke({
                 color: "#FFFFFF",
-                width: 5,
+                width: 2,
             }),
         });
     }
@@ -1301,15 +1328,15 @@ export class GeoengineRenderer extends Component {
         return styles_map;
     }
 
-    createFillAndStroke(color) {
+    createFillAndStroke(color, darkenColor=null) {
         const fill = new ol.style.Fill({
             color: color,
         });
         const stroke = new ol.style.Stroke({
-            color: "#333333",
-            width: 2,
+            color: darkenColor ?? "#333333",
+            width: darkenColor ? 5 : 2,
         });
-        return { fill, stroke };
+        return {fill, stroke};
     }
     /**
      * Allows you to find the index of the color to be used according to its value.

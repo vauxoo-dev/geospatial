@@ -23,7 +23,7 @@
                         class="o_search_panel_section_header text-uppercase cursor-default mb-2"
                     >
                         <span class="fs-6 fw-bold">
-                            <t t-esc="state.modelDescription" />
+                            Property boundaries
                         </span>
                     </header>
                     <SearchBarRecords onInputKeyup.bind="onInputKeyup" />

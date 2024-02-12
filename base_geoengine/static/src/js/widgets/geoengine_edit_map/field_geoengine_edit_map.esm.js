@@ -21,7 +21,7 @@ import {
     VIEW_TYPE_GEOENGINE,
     FEATURE_TYPES
 } from "../../constants";
-import { isTouchDevice, uniqueID } from "../../helpers"
+import { isTouchDevice, uniqueID, generateGeoPoints, createGeoPointStyle } from "../../helpers"
 import { Component, onMounted, onRendered, onWillStart, useEffect, useState } from "@odoo/owl";
 
 
@@ -304,37 +304,11 @@ export class FieldGeoEngineEditMap extends Component {
                 this.updateMapZoom();
                 this.createValuesTooltip();
                 if (this.props.record.data.city_id) await this.generateChildFeatures()
-                if (this.geoPoints?.length > 0) this.generateGeoPoints();
+                if (this.geoPoints?.length > 0) generateGeoPoints(this.geoPoints, this.source);
             } else {
                 this.updateMapEmpty();
             }
         }
-    }
-
-    /**
-    * Generates GeoPoints on the map.
-    *
-    * This function iterates over the `geoPoints` array and for each `geoPoint`, 
-    * it creates a new OpenLayers Feature with a Point geometry using the longitude 
-    * and latitude from the `geoPoint` data. It also sets the style, id, coordinates, 
-    * and name of the feature. Finally, it adds the feature to the source.
-    */
-    generateGeoPoints() {
-        this.geoPoints.forEach(geoPoint => {
-            const { longitude, latitude, name } = geoPoint.data
-            const { id } = geoPoint.evalContext;
-            const { geopointStyle } = this.createGeoPointStyle(String(id))
-            const feature = new ol.Feature({
-                geometry: new ol.geom.Point([longitude, latitude]),
-                labelPoint: new ol.geom.Point([longitude, latitude]),
-            })
-            feature.setStyle(geopointStyle)
-            feature.set("id", id)
-            feature.set("coordinates", [longitude, latitude])
-            feature.set("landName", name)
-            feature.set("type", FEATURE_TYPES.GEOPOINT)
-            this.source.addFeature(feature);
-        })
     }
 
     /**
@@ -567,37 +541,6 @@ export class FieldGeoEngineEditMap extends Component {
         return element;
     }
 
-    /**
-     * Creates a style for geopoint features on the map.
-     *
-     * This function creates a new OpenLayers style object with a circle image and a text label. 
-     * The circle is filled with color '#C70039' and has a white stroke. 
-     * The text label is styled with a bold 8px Calibri font, filled with black color and has a white stroke.
-     * If no label is provided, an empty string is used as the default.
-     * The function also creates a new empty vector source.
-     *
-     * @param {string|null} label - The text label for the style. If null, an empty string is used.
-     * @returns {Object} An object containing the created vector source and geopoint style.
-     */
-    createGeoPointStyle(label = null) {
-        const vectorSource = new ol.source.Vector({});
-        const geopointStyle = new ol.style.Style({
-            image: new ol.style.Circle({
-                radius: 10,
-                fill: new ol.style.Fill({ color: '#C70039' }),
-                stroke: new ol.style.Stroke({
-                    color: 'white', width: 1
-                })
-            }),
-            text: new ol.style.Text({
-                text: label ?? "",
-                font: 'bold 8px Calibri,sans-serif',
-                fill: new ol.style.Fill({ color: '#000' }),
-                stroke: new ol.style.Stroke({ color: '#fff', width: 2 })
-            })
-        });
-        return { vectorSource, geopointStyle }
-    }
 
     /**
      * Creates a control for adding geopoint features to the map.
@@ -628,7 +571,7 @@ export class FieldGeoEngineEditMap extends Component {
                 `
             }
             this.map.on("pointermove", infoTooltipHandler)
-            const { vectorSource, geopointStyle } = this.createGeoPointStyle()
+            const { vectorSource, geopointStyle } = createGeoPointStyle()
             const vectorLayer = new ol.layer.Vector({
                 source: vectorSource,
                 style: feature => {
@@ -658,7 +601,7 @@ export class FieldGeoEngineEditMap extends Component {
                     const record = await this.createRecord({
                         longitude,
                         latitude,
-                        land_id: this.props.record.data.id
+                        land_id: this.props.record.data.id,
                     }, "project.agriculture.scout", removeLayer)
                     if (!record) return;
                     const { name } = record.data
