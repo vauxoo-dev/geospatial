@@ -69,3 +69,10 @@ export const DEFAULT_NUM_CLASSES = 5;
 export const LEGEND_MAX_ITEMS = 10;
 export const PROJECT_AGRICULTURE_SCOUT_MODEL = "project.agriculture.scout";
 export const PROJECT_AGRICULTURE_LAND_MODEL = "project.agriculture.land";
+export const SCOUT_FIELDS = [
+    "geopoint",
+    "name",
+    "land_id",
+    "longitude",
+    "latitude"
+]

@@ -26,7 +26,6 @@ export const geoengineView = {
         const { ArchParser } = view;
         const { arch, relatedModels, resModel } = genericProps;
         const archInfo = new ArchParser().parse(arch, relatedModels, resModel);
-
         return {
             ...genericProps,
             Model: view.Model,
