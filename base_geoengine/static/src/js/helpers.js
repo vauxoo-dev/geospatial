@@ -1,6 +1,9 @@
 /** @odoo-module **/
 
-import { FEATURE_TYPES } from "./constants"
+import { FEATURE_TYPES, PROJECT_AGRICULTURE_LAND_MODEL, LAND_TYPES, FEATURE_OPACITY } from "./constants"
+
+
+// const ormService = useService("orm");
 
 /**
  * Generates a unique ID.
@@ -83,4 +86,38 @@ export function createGeoPointStyle(label = null) {
         })
     });
     return { vectorSource, geopointStyle }
+}
+
+  /**
+     * Creates a new land style object with the specified color and label.
+     * @param {string} color - The color of the land style in hex format.
+     * @param {string} label - The label to display on the land style.
+     * @returns {ol.style.Style} A new land style object.
+     */
+export function createLandStyle(color = "#0000f5", label = null) {
+    const lighterColor = chroma(color).alpha(FEATURE_OPACITY).css();
+    const darkenColor = chroma(color).darken(1).css();
+    const { Fill, Stroke, Style, Text } = ol.style;
+    const fill = new Fill({ color: lighterColor });
+    const stroke = new Stroke({
+        color: darkenColor,
+        width: 5,
+    });
+    const text = new Text({
+        font: 'bold 10px Calibri,sans-serif',
+        overflow: true,
+        text: label ?? "",
+        fill: new Fill({
+            color: '#000',
+        }),
+        stroke: new Stroke({
+            color: '#fff',
+            width: 2,
+        })
+    });
+    return new Style({
+        stroke,
+        fill,
+        text
+    });
 }

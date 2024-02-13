@@ -33,18 +33,17 @@ import {
     DEFAULT_MAX_SIZE,
     DEFAULT_NUM_CLASSES,
     LEGEND_MAX_ITEMS,
+    LAND_TYPES,
     PROJECT_AGRICULTURE_SCOUT_MODEL,
-    SCOUT_FIELDS
 } from "../../../constants";
 import { session } from "@web/session";
 import {WarningDialog} from "@web/core/errors/error_dialogs";
 import { _t } from "@web/core/l10n/translation";
-import { generateGeoPoints } from "../../../helpers"
-
+import { createGeoPointStyle, createLandStyle } from "../../../helpers";
 
 export class GeoengineRenderer extends Component {
     setup() {
-        this.state = useState({ selectedFeatures: [], isModified: false, isFit: false, popUpRecord: null });
+        this.state = useState({ selectedFeatures: [], isModified: false, isFit: false, popUpRecord: null, lands: [] });
         this.models = [];
         this.cfg_models = [];
         this.vectorModel = {};
@@ -92,16 +91,15 @@ export class GeoengineRenderer extends Component {
             ])
         );
 
-        onMounted(async () => {
+        onMounted(() => {
             // Retrives all vector layers in the store.
             this.geometryFields = this.vectorLayersStore.vectorsLayers.map(
                 (layer) => layer.geo_field_id[1]
             );
-            this.geoPoints = await this.getGeoPoints();
             this.vectorSources = [];
             this.renderMap();
-            this.addGeoPointsToMap(this.geoPoints);
             this.renderVectorLayers();
+            this.renderGeoPoints();
         });
 
         onWillUpdateProps((nextProps) => {
@@ -118,28 +116,34 @@ export class GeoengineRenderer extends Component {
         });
     }
 
-    addGeoPointsToMap() {
-        const vectorSource = new ol.source.Vector({});
-        generateGeoPoints(this.geoPoints, vectorSource);
-        this.geoPointsSource = new ol.layer.Vector({
+    async renderGeoPoints() {
+        const geopoints = await this.orm.searchRead(
+            PROJECT_AGRICULTURE_SCOUT_MODEL,
+            [],
+            ["longitude", "latitude", "id"]
+        )
+        const vectorSource = new ol.source.Vector();
+        geopoints.forEach(geoPoint => {
+            const { longitude, latitude, id } = geoPoint
+            const { geopointStyle } = createGeoPointStyle(String(id))
+            const feature = new ol.Feature({
+                geometry: new ol.geom.Point([longitude, latitude]),
+                labelPoint: new ol.geom.Point([longitude, latitude]),
+            })
+            feature.setStyle(geopointStyle)
+            feature.set("id", id)
+            vectorSource.addFeature(feature);
+        })
+        const vectorLayer = new ol.layer.Vector({
+            title: "Geopoints",
             source: vectorSource,
         })
-        this.map.addLayer(this.geoPointsSource);
-        // use the state.geoengineLayers.actives to toggle the visibility of the layer
-        // const currentVisibility = this.geoPointsSource.getVisible();
-        // this.geoPointsSource.setVisible(!currentVisibility);
+        this.map.addLayer(vectorLayer);
     }
 
-    async getGeoPoints() {
-        const data = await this.orm.searchRead(
-            PROJECT_AGRICULTURE_SCOUT_MODEL, 
-            [], 
-            SCOUT_FIELDS
-        );
-        return data.map(({ latitude, longitude, name, id }) => ({
-            data: { latitude, longitude, name },
-            evalContext: { id }
-        }))
+    toggleGeopointsVisibility() {
+        const geopointsLayer = this.map.getLayers().getArray().find(layer => layer.get("title") === "Geopoints")
+        geopointsLayer.setVisible(!geopointsLayer.getVisible())
     }
 
     async loadVectorModel() {
@@ -454,6 +458,7 @@ export class GeoengineRenderer extends Component {
 
                 this.drawInteraction.on("drawstart", e => {
                     this.props.onDrawStart();
+                    this.hidePopup();
                     this.createTooltipInfo();
                     this.sketch = e.feature;
                     this.tooltipCoord = e.coordinate;
@@ -579,13 +584,10 @@ export class GeoengineRenderer extends Component {
      * The second is for the click on the feature.
      */
     registerInteraction() {
-        this.selectPointerMove = new ol.interaction.Select({
-            condition: ol.events.condition.pointerMove,
-            style: this.selectStyle,
-        });
         this.selectClick = new ol.interaction.Select({
             condition: ol.events.condition.click,
             style: this.selectStyle,
+            filter: (feature) =>  this.isPropertyBoundary(feature),
         });
 
         this.selectClick.on("select", (e) => {
@@ -593,7 +595,12 @@ export class GeoengineRenderer extends Component {
             this.updateInfoBox(features);
         });
         this.map.addInteraction(this.selectClick);
-        this.map.addInteraction(this.selectPointerMove);
+    }
+
+
+    isPropertyBoundary(feature) {
+        const attributes = feature?.values_?.attributes ?? {}
+        return !("parent_id" in attributes);
     }
 
     /**
@@ -602,7 +609,7 @@ export class GeoengineRenderer extends Component {
      * @returns style
      */
     selectStyle(feature) {
-        var geometryType = feature.getGeometry().getType();
+        const geometryType = feature.getGeometry().getType();
         switch (geometryType) {
             case "Point":
                 return new ol.style.Style({
@@ -619,9 +626,10 @@ export class GeoengineRenderer extends Component {
                     zIndex: Infinity,
                 });
             case "MultiPolygon":
+                const color = feature.values_?.attributes?.color ?? feature.values_?.color
                 return new ol.style.Style({
                     fill: new ol.style.Fill({
-                        color: chroma(feature.values_.attributes.color)
+                        color: chroma(color)
                             .alpha(0.4)
                             .css(),
                     }),
@@ -634,9 +642,9 @@ export class GeoengineRenderer extends Component {
      */
     updateInfoBox(features) {
         const feature = features.item(0);
-        if (feature !== undefined) {
+        if (feature && this.isPropertyBoundary(feature)) {
             const popup = this.getPopup();
-            if (feature !== undefined) {
+            if (feature?.values_?.attributes) {
                 var attributes = feature.get("attributes");
 
                 if (this.cfg_models.includes(feature.get("model"))) {
@@ -663,7 +671,7 @@ export class GeoengineRenderer extends Component {
                     });
                 }
 
-                var coord = ol.extent.getCenter(feature.getGeometry().getExtent());
+                const coord = ol.extent.getCenter(feature.getGeometry().getExtent());
                 this.overlay.setPosition(coord);
             }
         } else {
@@ -890,7 +898,7 @@ export class GeoengineRenderer extends Component {
         const vectorLayers = await this.createVectorLayers();
         this.vectorLayersResult = await Promise.all(vectorLayers);
         this.map.getLayers().forEach((layer) => {
-            if (layer.get("title") === "Overlays") {
+            if (layer?.get("title") === "Overlays") {
                 this.map.removeLayer(layer);
             }
         });
@@ -929,16 +937,15 @@ export class GeoengineRenderer extends Component {
     }
 
     async createVectorLayer(cfg) {
-        var lv = new ol.layer.Vector({
+        const lv = new ol.layer.Vector({
             title: cfg.name,
             active_on_startup: cfg.active_on_startup,
         });
-        // If we want to use an other model in the layer
+        const fieldsToRead = this.getFieldsToRead(cfg);
         if (cfg.model) {
             this.cfg_models.push(cfg.model);
-            const fields_to_read = this.getFieldsToRead(cfg);
             await this.loadView(cfg.model, "geoengine");
-            const data = await this.getModelData(cfg, fields_to_read);
+            const data = await this.getModelData(cfg, fieldsToRead);
             this.styleVectorLayerAndLegend(cfg, data, lv);
             this.useRelatedModel(cfg, lv, data);
         } else {
@@ -1105,10 +1112,9 @@ export class GeoengineRenderer extends Component {
         const clone = obj => Object.assign({}, obj)
 
         data.forEach((item) => {
-            var attributes =
+            const attributes =
                 item._values === undefined ? clone(item) : clone(item._values);
             this.geometryFields.forEach((geo_field) => delete attributes[geo_field]);
-
             if (cfg.display_polygon_labels === true) {
                 attributes.label =
                     item._values === undefined
@@ -1129,8 +1135,12 @@ export class GeoengineRenderer extends Component {
                     attributes: attributes,
                     model: cfg.model,
                 });
+                if(item.data.polygon_type !== "Property_boundary") {
+                    const { color } = LAND_TYPES.find(ft => ft.name === item.data.polygon_type)
+                    const ftStyle = createLandStyle(color, item.data.display_name)
+                    feature.setStyle(ftStyle)
+                }
                 feature.setId(item.resId);
-
                 vectorSource.addFeature(feature);
             }
         });

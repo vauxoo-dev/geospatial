@@ -20,7 +20,7 @@
             <div t-if="!state.isFolded">
                 <section class="o_search_panel_section">
                     <header
-                        class="o_search_panel_section_header text-uppercase cursor-default"
+                        class="o_search_panel_section_header text-uppercase cursor-default mb-2"
                     >
                         <span class="fs-6 fw-bold">Vectors</span>
                     </header>
@@ -29,11 +29,11 @@
                             <li
                                 t-foreach="state.geoengineLayers.actives"
                                 t-as="vector"
-                                t-key="vector.resId"
-                                class="item d-flex align-items-center"
+                                t-key="vector.id"
+                                class="item d-flex align-items-center justify-content-between"
                                 t-att-data-id="vector.id"
+                                style="gap: 1rem;"
                             >
-                                <i class="fa fa-sort m-3" />
                                 <div
                                     class="d-flex justify-content-between align-items-center"
                                 >
@@ -43,21 +43,24 @@
                                     >
                                         <span t-esc="vector.name" class="text-break"/>
                                     </CheckBox>
-                                    <button
-                                        t-if="vector.model_id &amp; isGeoengineAdmin"
-                                        class="btn btn-edit"
-                                        t-on-click.prevent="() => this.onEditFilterButtonSelected(vector)"
-                                    >
-                                        <i class="fa fa-filter text-primary" />
-                                    </button>
-                                    <button
-                                        t-if="isGeoengineAdmin"
-                                        class="btn btn-edit"
-                                        t-on-click.prevent="() => this.onEditButtonSelected(vector)"
-                                    >
-                                        <i class="fa fa-edit text-primary" />
-                                    </button>
                                 </div>
+                            </li>
+                            <li
+                                class="item d-flex align-items-center justify-content-between"
+                                style="gap: 1rem;"
+                            >
+                                <div
+                                    class="d-flex justify-content-between align-items-center"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked="checked"
+                                        class="form-check-input mt-0 cursor-pointer"
+                                        t-on-change="props.toggleGeopointsVisibility"
+                                    />
+                                    <span class="text-break ms-2">Geopoints</span>
+                                </div>
+                                <div class="feature-circle"/>
                             </li>
                         </ul>
                     </div>
@@ -95,7 +98,7 @@
                 </section>
             </div>
             <div t-else="" class="d-flex justify-content-center text-900">
-                <span class="title-panel">Layers (<t t-esc="numberOfLayers" />)</span>
+                <span class="title-panel">Layers</span>
             </div>
         </div>
     </t>

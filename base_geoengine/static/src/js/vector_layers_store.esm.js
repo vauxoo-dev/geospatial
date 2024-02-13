@@ -24,8 +24,8 @@ class VectorLayersStore {
         return this.vectors;
     }
 
-    getVector(resId) {
-        return this.vectors.find((el) => el.resId === resId);
+    getVector(id) {
+        return this.vectors.find((el) => el.id === id);
     }
 
     get count() {

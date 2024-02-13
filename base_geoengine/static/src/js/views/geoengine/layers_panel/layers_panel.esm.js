@@ -170,7 +170,7 @@ export class LayersPanel extends Component {
             layer.onLayerChanged = false;
             layer.onSequenceChanged = false;
         });
-        const vectorLayer = vectorLayersStore.getVector(layer.resId);
+        const vectorLayer = vectorLayersStore.getVector(layer.id);
         switch (action) {
             case "onDomainChanged":
                 Object.assign(vectorLayer, {
@@ -250,11 +250,17 @@ export class LayersPanel extends Component {
     fold() {
         this.state.isFolded = !this.state.isFolded;
     }
+
+    toggleGeoPointsVisibility() {
+        const currentVisibility = this.props.geoPointsSource.getVisible();
+        this.props.geoPointsSource.setVisible(!currentVisibility);
+    }
 }
 
 LayersPanel.template = "base_geoengine.LayersPanel";
 LayersPanel.props = {
     model: { type: String, optional: false },
     vectorModel: { type: Object, optional: false },
+    toggleGeopointsVisibility: Function
 };
 LayersPanel.components = { CheckBox };
