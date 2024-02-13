@@ -16,12 +16,17 @@ import { FormViewDialog } from "@web/views/view_dialogs/form_view_dialog";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import {
     CUSTOM_LAYERS,
-    FEATURE_OPACITY,
     LAND_TYPES,
     VIEW_TYPE_GEOENGINE,
     FEATURE_TYPES
 } from "../../constants";
-import { isTouchDevice, uniqueID, generateGeoPoints, createGeoPointStyle } from "../../helpers"
+import { 
+    isTouchDevice, 
+    uniqueID, 
+    generateGeoPoints, 
+    createGeoPointStyle, 
+    createLandStyle 
+} from "../../helpers"
 import { Component, onMounted, onRendered, onWillStart, useEffect, useState } from "@odoo/owl";
 
 
@@ -167,7 +172,7 @@ export class FieldGeoEngineEditMap extends Component {
     createVectorLayer(color = "#0000f5") {
         this.features = new ol.Collection();
         this.source = new ol.source.Vector({ features: this.features });
-        const landStyle = this.createLandStyle(color);
+        const landStyle = createLandStyle(color);
         return new ol.layer.Vector({
             source: this.source,
             style: feature => {
@@ -176,40 +181,6 @@ export class FieldGeoEngineEditMap extends Component {
                 return [landStyle];
             }
         })
-    }
-
-    /**
-     * Creates a new land style object with the specified color and label.
-     * @param {string} color - The color of the land style in hex format.
-     * @param {string} label - The label to display on the land style.
-     * @returns {ol.style.Style} A new land style object.
-     */
-    createLandStyle(color = "#0000f5", label = null) {
-        const lighterColor = chroma(color).alpha(FEATURE_OPACITY).css();
-        const darkenColor = chroma(color).darken(1).css();
-        const { Fill, Stroke, Style, Text } = ol.style;
-        const fill = new Fill({ color: lighterColor });
-        const stroke = new Stroke({
-            color: darkenColor,
-            width: 5,
-        });
-        const text = new Text({
-            font: 'bold 10px Calibri,sans-serif',
-            overflow: true,
-            text: label ?? "",
-            fill: new Fill({
-                color: '#000',
-            }),
-            stroke: new Stroke({
-                color: '#fff',
-                width: 2,
-            })
-        });
-        return new Style({
-            stroke,
-            fill,
-            text
-        });
     }
 
     /**
@@ -336,7 +307,7 @@ export class FieldGeoEngineEditMap extends Component {
             });
             const { color } = LAND_TYPES.find(landType => landType.name === polygonType)
             const label = `${polygonType} \n ${name}`
-            const style = this.createLandStyle(color, label)
+            const style = createLandStyle(color, label)
             ft.setStyle(style)
             ft.set("id", id)
             ft.set("landName", name)

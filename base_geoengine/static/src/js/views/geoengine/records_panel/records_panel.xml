@@ -23,7 +23,7 @@
                         class="o_search_panel_section_header text-uppercase cursor-default mb-2"
                     >
                         <span class="fs-6 fw-bold">
-                            Property boundaries
+                            Records (<t t-esc="props.list.records.length" />)
                         </span>
                     </header>
                     <SearchBarRecords onInputKeyup.bind="onInputKeyup" />

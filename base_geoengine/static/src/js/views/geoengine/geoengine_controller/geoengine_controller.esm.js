@@ -80,7 +80,9 @@ export class GeoengineController extends Component {
      */
     async createRecord(resModel, field, value) {
         const { views } = await this.view.loadViews({ resModel, views: [[false, "form"]] });
-        const context = {};
+        const context = {
+            hide_map: true,
+        };
         context[`default_${field}`] = value;
         this.addDialog(FormViewDialog, {
             resModel: resModel,
