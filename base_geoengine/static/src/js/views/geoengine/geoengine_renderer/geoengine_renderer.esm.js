@@ -74,7 +74,7 @@ export class GeoengineRenderer extends Component {
             Promise.all([
                 loadBundle({
                     jsLibs: [
-                        "/base_geoengine/static/lib/ol-7.2.2/ol.js",
+                        "/base_geoengine/static/lib/ol-9.1.0/ol.js",
                         "/base_geoengine/static/lib/chromajs-2.4.2/chroma.js",
                         "/base_geoengine/static/lib/geostats-2.0.0/geostats.js",
                         "/base_geoengine/static/lib/geocoder-4.3.1/ol-geocoder.js"
